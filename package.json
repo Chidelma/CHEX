@@ -1,6 +1,6 @@
 {
   "name": "@vyckr/chex",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "main": "./src/index.ts",
   "types": "./src/types/index.d.ts",
   "devDependencies": {

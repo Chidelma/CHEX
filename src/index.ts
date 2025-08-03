@@ -4,8 +4,8 @@ import { isRegExp } from 'util/types';
 
 export default class InterfaceGenerator {
 
-  private indentLevel = 0;
-  private readonly INDENT = '    ';
+  private static indentLevel = 0;
+  private static readonly INDENT = '    ';
 
   private static readonly SCHEMA_DIR = process.env.SCHEMA_DIR
 
@@ -14,19 +14,19 @@ export default class InterfaceGenerator {
   /**
    * Main method to convert JSON to TypeScript declaration
    */
-  generateDeclaration(json: any, interfaceName: string = '_template'): string {
+  static generateDeclaration(json: any, interfaceName: string = '_template'): string {
     if (typeof json !== 'object' || json === null) {
       throw new Error('Input must be a valid JSON object');
     }
 
-    const interfaceBody = this.generateInterfaceBody(json);
+    const interfaceBody = InterfaceGenerator.generateInterfaceBody(json);
     return `interface _${interfaceName} {\n${interfaceBody}}\n`;
   }
 
   /**
    * Generate the body of the TypeScript interface
    */
-  private generateInterfaceBody(obj: any): string {
+  private static generateInterfaceBody(obj: any): string {
     const properties: string[] = [];
     
     for (const [key, value] of Object.entries(obj)) {
@@ -42,7 +42,7 @@ export default class InterfaceGenerator {
   /**
    * Infer TypeScript type from JSON value
    */
-  private inferType(value: any): string {
+  private static inferType(value: any): string {
     if (value === null) {
       throw new Error(`value cannot be null, please use '?' for nullable properties`)
     }
@@ -61,7 +61,7 @@ export default class InterfaceGenerator {
   /**
    * Infer type for arrays
    */
-  private inferArrayType(arr: any[]): string {
+  private static inferArrayType(arr: any[]): string {
     if (arr.length === 0) {
       return 'Array<unknown>';
     }
@@ -82,7 +82,7 @@ export default class InterfaceGenerator {
   /**
    * Infer type for nested objects
    */
-  private inferObjectType(obj: any): string {
+  private static inferObjectType(obj: any): string {
     if (Object.keys(obj).length === 0) {
       return 'Record<string, unknown>';
     }
@@ -120,7 +120,7 @@ export default class InterfaceGenerator {
   /**
    * Check if an object represents a simple key-value record
    */
-  private isSimpleRecord(obj: any): boolean {
+  private static isSimpleRecord(obj: any): boolean {
     const keys = Object.keys(obj);
     
     // Heuristic: if all keys are similar (e.g., all empty strings, all single chars)
@@ -158,8 +158,7 @@ export default class InterfaceGenerator {
   static fromJsonString(jsonString: string, interfaceName?: string): string {
     try {
       const parsed = JSON.parse(jsonString);
-      const generator = new InterfaceGenerator();
-      return generator.generateDeclaration(parsed, interfaceName);
+      return InterfaceGenerator.generateDeclaration(parsed, interfaceName);
     } catch (error) {
       throw new Error(`Invalid JSON: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -169,8 +168,7 @@ export default class InterfaceGenerator {
    * Utility method to generate declaration from object
    */
   static fromObject(obj: any, interfaceName?: string): string {
-    const generator = new InterfaceGenerator();
-    return generator.generateDeclaration(obj, interfaceName);
+    return InterfaceGenerator.generateDeclaration(obj, interfaceName);
   }
 
   static async validateData<T extends Record<string, any>>(collection: string, data: T) {
@@ -298,8 +296,6 @@ const cwd = process.env.SCHEMA_DIR
 
 if(!cwd) throw new Error("Schema directory not set")
 
-const generator = new InterfaceGenerator()
-
 const scannedFiles = await Array.fromAsync(glob.scan({ cwd }))
 
 for (const filePath of scannedFiles) {
@@ -308,7 +304,7 @@ for (const filePath of scannedFiles) {
 
     const fileName = filePath.split('/').pop()?.replace('.json', '')
 
-    const generated = generator.generateDeclaration(schema, fileName)
+    const generated = InterfaceGenerator.generateDeclaration(schema, fileName)
 
     await Bun.write(`${cwd}/${filePath.replace('.json', '.d.ts')}`, generated)
 }
