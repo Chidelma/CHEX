@@ -1,0 +1,16 @@
+{
+    "^name$": "^[A-Za-z]+ [A-Za-z]+$",
+    "age": -0,
+    "^email$": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$",
+    "verified": false,
+    "address": {
+        "street_number": -0,
+        "street_name": "",
+        "city": "",
+        "province?": "ON",
+        "country": ""
+    },
+    "hobbies": [""],
+    "other_details": { "": "" },
+    "location": [-0]
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@vyckr/chex",
+  "version": "1.0.0",
+  "main": "./src/index.ts",
+  "types": "./src/types/index.d.ts",
+  "devDependencies": {
+    "@types/bun": "^1.2.19",
+    "@types/node": "^20.4.2"
+  },
+  "bin": {
+    "chex/generate": "./src/index.ts"
+  },
+  "type": "module",
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Chidelma/CHEX.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "typescript",
+    "bun",
+    "validation",
+    "data"
+  ],
+  "author": "Chidelma",
+  "bugs": {
+    "url": "https://github.com/Chidelma/CHEX/issues"
+  }
+}
