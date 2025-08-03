@@ -1,6 +1,6 @@
 {
   "name": "@vyckr/chex",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "main": "./src/index.ts",
   "types": "./src/types/index.d.ts",
   "devDependencies": {
@@ -8,7 +8,7 @@
     "@types/node": "^20.4.2"
   },
   "bin": {
-    "chex/generate": "./src/index.ts"
+    "chex@generate": "./src/index.ts"
   },
   "type": "module",
   "peerDependencies": {
