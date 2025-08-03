@@ -1,8 +1,6 @@
-#!/usr/bin/env node
-import { Glob } from 'bun';
 import { isRegExp } from 'util/types';
 
-export default class InterfaceGenerator {
+export default class Generator {
 
   private static indentLevel = 0;
   private static readonly INDENT = '    ';
@@ -19,7 +17,7 @@ export default class InterfaceGenerator {
       throw new Error('Input must be a valid JSON object');
     }
 
-    const interfaceBody = InterfaceGenerator.generateInterfaceBody(json);
+    const interfaceBody = Generator.generateInterfaceBody(json);
     return `interface _${interfaceName} {\n${interfaceBody}}\n`;
   }
 
@@ -31,7 +29,7 @@ export default class InterfaceGenerator {
     
     for (const [key, value] of Object.entries(obj)) {
       const type = this.inferType(value);
-      const propertyKey = InterfaceGenerator.sanitizePropertyName(key);
+      const propertyKey = Generator.sanitizePropertyName(key);
       
       properties.push(`${this.INDENT}${propertyKey}: ${key.endsWith('?') ? `${type} | null` : `${type}`}`);
     }
@@ -105,7 +103,7 @@ export default class InterfaceGenerator {
     
     for (const [key, value] of Object.entries(obj)) {
       const type = this.inferType(value);
-      const propertyKey = InterfaceGenerator.sanitizePropertyName(key);
+      const propertyKey = Generator.sanitizePropertyName(key);
       const indent = this.INDENT.repeat(this.indentLevel);
       
       properties.push(`${indent}${propertyKey}: ${key.endsWith('?') ? `${type} | null` : `${type}`}`);
@@ -158,7 +156,7 @@ export default class InterfaceGenerator {
   static fromJsonString(jsonString: string, interfaceName?: string): string {
     try {
       const parsed = JSON.parse(jsonString);
-      return InterfaceGenerator.generateDeclaration(parsed, interfaceName);
+      return Generator.generateDeclaration(parsed, interfaceName);
     } catch (error) {
       throw new Error(`Invalid JSON: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -168,7 +166,7 @@ export default class InterfaceGenerator {
    * Utility method to generate declaration from object
    */
   static fromObject(obj: any, interfaceName?: string): string {
-    return InterfaceGenerator.generateDeclaration(obj, interfaceName);
+    return Generator.generateDeclaration(obj, interfaceName);
   }
 
   static async validateData<T extends Record<string, any>>(collection: string, data: T) {
@@ -198,11 +196,11 @@ export default class InterfaceGenerator {
             for(let schemaKey in schema) {
 
                 const schemaValue = schema[schemaKey]
-                const dataValue = data[InterfaceGenerator.sanitizePropertyName(schemaKey)]
+                const dataValue = data[Generator.sanitizePropertyName(schemaKey)]
 
                 const valueIsDefined = dataValue !== null && dataValue !== undefined
 
-                const fullPath = path ? `${path}.${InterfaceGenerator.sanitizePropertyName(schemaKey)}` : InterfaceGenerator.sanitizePropertyName(schemaKey)
+                const fullPath = path ? `${path}.${Generator.sanitizePropertyName(schemaKey)}` : Generator.sanitizePropertyName(schemaKey)
                 
                 const isNullable = schemaKey.endsWith('?')
 
@@ -288,23 +286,4 @@ export default class InterfaceGenerator {
 
         return validateObject(data, schema)
     }
-}
-
-const glob = new Glob("**/*.json")
-
-const cwd = process.env.SCHEMA_DIR
-
-if(!cwd) throw new Error("Schema directory not set")
-
-const scannedFiles = await Array.fromAsync(glob.scan({ cwd }))
-
-for (const filePath of scannedFiles) {
-
-    const schema = await Bun.file(`${cwd}/${filePath}`).json()
-
-    const fileName = filePath.split('/').pop()?.replace('.json', '')
-
-    const generated = InterfaceGenerator.generateDeclaration(schema, fileName)
-
-    await Bun.write(`${cwd}/${filePath.replace('.json', '.d.ts')}`, generated)
 }

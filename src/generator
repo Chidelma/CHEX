@@ -1,0 +1,22 @@
+#!/usr/bin/env node
+import { Glob } from 'bun';
+import Gen from '.'
+
+const glob = new Glob("**/*.json")
+
+const cwd = process.env.SCHEMA_DIR
+
+if(!cwd) throw new Error("Schema directory not set")
+
+const scannedFiles = await Array.fromAsync(glob.scan({ cwd }))
+
+for (const filePath of scannedFiles) {
+
+    const schema = await Bun.file(`${cwd}/${filePath}`).json()
+
+    const fileName = filePath.split('/').pop()?.replace('.json', '')
+
+    const generated = Gen.generateDeclaration(schema, fileName)
+
+    await Bun.write(`${cwd}/${filePath.replace('.json', '.d.ts')}`, generated)
+}
