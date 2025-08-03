@@ -5,7 +5,7 @@ declare module "@vyckr/chex" {
         /**
          * Main method to convert JSON to TypeScript declaration
          */
-        static generateDeclaration(json: any, interfaceName: string): string
+        static generateDeclaration(json: any, interfaceName?: string): string
     
         /**
          * Sanitize property names for TypeScript
