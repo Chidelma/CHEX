@@ -1,11 +1,9 @@
-import { isRegExp } from 'util/types';
-
 export default class Generator {
 
   private static indentLevel = 0;
   private static readonly INDENT = '    ';
 
-  private static readonly SCHEMA_DIR = process.env.SCHEMA_DIR
+  private static readonly SCHEMA_DIR = typeof window !== "undefined" ? '.' : process.env.SCHEMA_DIR
 
   private static readonly collectionSchemas: Map<string, Record<string, any>> = new Map()
 
@@ -177,7 +175,8 @@ export default class Generator {
             schema = this.collectionSchemas.get(collection)!
         } else {
             try {
-                schema = await Bun.file(`${this.SCHEMA_DIR}/${collection}.json`).json();
+                const res = await import(`${this.SCHEMA_DIR}/${collection}.json`)
+                schema = res.default
                 this.collectionSchemas.set(collection, schema);
             } catch (error) {
                 throw new Error(`Failed to load schema for collection '${collection}': ${error}`);
@@ -211,10 +210,12 @@ export default class Generator {
 
                 const hasRegex = schemaKey.startsWith('^') && schemaKey.endsWith('$') && expectedType === "string"
 
-                const regEx = new RegExp(schemaValue)
+                let regEx;
 
-                if(hasRegex && !isRegExp(regEx)) {
-                    throw new Error(`Invalid RegEx pattern for '${fullPath}' in '${collection}' collection`)
+                try {
+                  if(hasRegex) regEx = new RegExp(schemaValue)
+                } catch(e) {
+                  throw new Error(`Invalid RegEx pattern for '${fullPath}' in '${collection}' collection`)
                 }
                 
                 schemaKey = hasRegex ? schemaKey.replace('^', '').replace('$','') : schemaKey
@@ -232,7 +233,7 @@ export default class Generator {
                     throw new Error(`Property '${fullPath}' cannot be null or undefined in '${collection}' collection`)
                 }
 
-                if(valueIsDefined && hasRegex && !regEx.test(dataValue)) {
+                if(valueIsDefined && hasRegex && !regEx!.test(dataValue)) {
                     throw new Error(`RegEx pattern fails for property '${fullPath}' in '${collection}' collection`)
                 }
 
