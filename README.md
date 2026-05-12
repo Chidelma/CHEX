@@ -14,25 +14,25 @@ CHEX is a JavaScript utility for generating type declarations from JSON schema f
 
 ### Installation
 
-Authenticate with GitHub Packages before installing:
+Public stable releases install from npm by default:
 
-```bash
-npm login --scope=@d31ma --auth-type=legacy --registry=https://npm.pkg.github.com
+```sh
+bun add @d31ma/chex
 ```
 
-Then add this to your user or project `.npmrc` so Bun can resolve the package:
+If you are a `d31ma` member and want the private beta channel from GitHub Packages instead, configure a user-level `.npmrc`:
 
 ```ini
+# ~/.npmrc
 @d31ma:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=YOUR_GITHUB_PAT
+//npm.pkg.github.com/:_authToken=${GITHUB_PACKAGES_TOKEN}
+always-auth=true
 ```
 
 See GitHub's npm registry docs for the latest authentication details:
 https://docs.github.com/packages/using-github-packages-with-your-projects-ecosystem/configuring-npm-for-use-with-github-packages
 
-```sh
-bun add @d31ma/chex
-```
+After that, the same `bun add @d31ma/chex` command will resolve from GitHub Packages for your user.
 
 ## Schema Format
 

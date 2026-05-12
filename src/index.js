@@ -44,15 +44,15 @@ export {
 export * from './errors.js';
 
 /**
- * Static-class facade. Mutating `Generator.SCHEMA_DIR` after import is
+ * Static-class facade. Mutating `Generator.CHEX_SCHEMA_DIR` after import is
  * supported and takes effect on the next `validateData` call.
  */
 export default class Generator {
   static INDENT = INDENT;
 
   /** @type {string|null|undefined} */
-  static SCHEMA_DIR =
-    typeof window !== 'undefined' ? '.' : process.env.SCHEMA_DIR;
+  static CHEX_SCHEMA_DIR =
+    typeof window !== 'undefined' ? '.' : process.env.CHEX_SCHEMA_DIR;
 
   /** @type {Map<string, Record<string, unknown>>} */
   static collectionSchemas = new Map();
@@ -69,16 +69,16 @@ export default class Generator {
   static fromJsonString = fromJsonString;
 
   static getSchemaPath(collection) {
-    return getSchemaPath(collection, this.SCHEMA_DIR);
+    return getSchemaPath(collection, this.CHEX_SCHEMA_DIR);
   }
 
   static loadCollectionSchema(collection) {
-    return loadCollectionSchema(collection, this.SCHEMA_DIR);
+    return loadCollectionSchema(collection, this.CHEX_SCHEMA_DIR);
   }
 
   static validateData(collection, data) {
     return validateData(collection, data, {
-      schemaDir: this.SCHEMA_DIR,
+      schemaDir: this.CHEX_SCHEMA_DIR,
       cache: this.collectionSchemas,
     });
   }

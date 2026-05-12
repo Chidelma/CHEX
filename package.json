@@ -28,6 +28,10 @@
     "type": "git",
     "url": "git+https://github.com/d31ma/CHEX.git"
   },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "tag": "beta"
+  },
   "homepage": "https://github.com/d31ma/CHEX#readme",
   "bugs": {
     "url": "https://github.com/d31ma/CHEX/issues"
