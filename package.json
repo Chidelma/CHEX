@@ -1,6 +1,6 @@
 {
   "name": "@d31ma/chex",
-  "version": "26.20.12",
+  "version": "26.20.2",
   "description": "Regex-driven JSON schema validation and TypeScript declaration generation for Bun",
   "main": "./src/index.js",
   "types": "./types/index.d.ts",
