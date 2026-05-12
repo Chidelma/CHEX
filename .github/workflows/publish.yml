@@ -163,13 +163,13 @@ jobs:
           VERSION: ${{ steps.read.outputs.version }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cat > ~/.npmrc <<EOF
-          @d31ma:registry=https://npm.pkg.github.com
-          //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
-          always-auth=true
-          EOF
+          {
+            echo "@d31ma:registry=https://npm.pkg.github.com"
+            echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}"
+            echo "always-auth=true"
+          } > "$RUNNER_TEMP/gh-packages.npmrc"
 
-          if npm view "${PACKAGE_NAME}@${VERSION}" version --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
+          if NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/gh-packages.npmrc" npm view "${PACKAGE_NAME}@${VERSION}" version --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "GitHub Packages already has ${PACKAGE_NAME}@${VERSION}."
           else
@@ -182,7 +182,8 @@ jobs:
           PACKAGE_NAME: ${{ steps.read.outputs.package_name }}
           VERSION: ${{ steps.read.outputs.version }}
         run: |
-          if npm view "${PACKAGE_NAME}@${VERSION}" version --registry=https://registry.npmjs.org >/dev/null 2>&1; then
+          # Use isolated npmrc to avoid scope contamination from GitHub Packages check
+          if NPM_CONFIG_USERCONFIG=/dev/null npm view "${PACKAGE_NAME}@${VERSION}" version --registry=https://registry.npmjs.org >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "npm already has ${PACKAGE_NAME}@${VERSION}."
           else
