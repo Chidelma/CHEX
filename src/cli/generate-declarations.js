@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * @fileoverview `chex.generate` CLI. Walks `SCHEMA_DIR` for `*.json` files
+ * @fileoverview `chex.generate` CLI. Walks `CHEX_SCHEMA_DIR` for `*.json` files
  * and writes a sibling `.d.ts` for each one.
  */
 
@@ -13,7 +13,7 @@ Usage:
   chex.generate
 
 Environment:
-  SCHEMA_DIR    Directory to scan recursively for *.json files (required)
+  CHEX_SCHEMA_DIR    Directory to scan recursively for *.json files (required)
 
 Options:
   -h, --help    Show this help and exit
@@ -26,9 +26,9 @@ if (args.includes('-h') || args.includes('--help')) {
   process.exit(0);
 }
 
-const cwd = process.env.SCHEMA_DIR;
+const cwd = process.env.CHEX_SCHEMA_DIR;
 if (!cwd) {
-  console.error('chex.generate: SCHEMA_DIR is not set');
+  console.error('chex.generate: CHEX_SCHEMA_DIR is not set');
   process.exit(1);
 }
 

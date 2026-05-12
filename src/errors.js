@@ -19,7 +19,7 @@ export class ChexError extends Error {
   }
 }
 
-/** Configuration is missing or invalid (e.g. SCHEMA_DIR not set). */
+/** Configuration is missing or invalid (e.g. CHEX_SCHEMA_DIR not set). */
 export class ConfigError extends ChexError {}
 
 /** Caller passed an input shape CHEX cannot accept. */

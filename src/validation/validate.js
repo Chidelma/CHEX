@@ -154,7 +154,7 @@ function validateObject(data, schema, collection, path) {
 
 /**
  * Validate a data object against the schema for `collection`. Loads the
- * schema from `options.schemaDir` (or `process.env.SCHEMA_DIR`), caches
+ * schema from `options.schemaDir` (or `process.env.CHEX_SCHEMA_DIR`), caches
  * it in `options.cache` (or a module-local cache), and returns the
  * validated data.
  *
@@ -171,7 +171,7 @@ export async function validateData(collection, data, options = {}) {
     throw new InvalidNameError('Invalid collection name');
   }
 
-  const schemaDir = options.schemaDir ?? process.env.SCHEMA_DIR;
+  const schemaDir = options.schemaDir ?? process.env.CHEX_SCHEMA_DIR;
   const cache = options.cache ?? defaultCache;
 
   let schema = cache.get(collection);

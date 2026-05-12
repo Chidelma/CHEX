@@ -29,7 +29,7 @@ export function normalizeSchemaDir(schemaDir) {
  */
 export function getSchemaPath(collection, schemaDir) {
   if (!schemaDir) {
-    throw new ConfigError('SCHEMA_DIR is not configured');
+    throw new ConfigError('CHEX_SCHEMA_DIR is not configured');
   }
   const normalized = normalizeSchemaDir(schemaDir).replace(/[\\/]+$/, '');
   return `${normalized}/${collection}.json`;
