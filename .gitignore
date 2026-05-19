@@ -1,16 +1,13 @@
 node_modules
 .env
 
-# Build artifacts (TypeScript declarations generated from JSDoc)
+# Build artifacts
 types/
+dist-bin/
 
 # Graphify
-.graphify_*
-graphify-out/cache/
-graphify-out/converted/
-graphify-out/transcripts/
-graphify-out/manifest.json
-graphify-out/.graphify_python
+.graphify*
+graphify-out/
 CLAUDE.md
 AGENTS.md
 GEMINI.md
@@ -21,3 +18,5 @@ GEMINI.md
 # Untrack markdown except README
 *.md
 !README.md
+.claude
+.vscode

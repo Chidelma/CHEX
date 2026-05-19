@@ -1,24 +1,26 @@
 {
   "name": "@d31ma/chex",
-  "version": "26.20.2",
-  "description": "Regex-driven JSON schema validation and TypeScript declaration generation for Bun",
+  "version": "26.21.02",
+  "description": "Language-agnostic regex-driven JSON schema validation for Bun and compiled executables",
   "main": "./src/index.js",
   "types": "./types/index.d.ts",
   "type": "module",
   "bin": {
-    "chex.generate": "./src/cli/generate-declarations.js"
+    "chex": "./src/cli/index.js"
   },
   "files": [
     "src/",
     "types/",
+    "examples/",
     "LICENSE",
     "README.md"
   ],
   "scripts": {
     "test": "bun test ./tests/",
     "test:watch": "bun test --watch ./tests/",
-    "typecheck": "tsc --noEmit",
-    "build": "tsc",
+    "typecheck": "bun ./node_modules/typescript/bin/tsc --noEmit",
+    "build": "bun ./node_modules/typescript/bin/tsc",
+    "build:exe": "mkdir -p ./dist-bin && bun build --compile ./src/cli/index.js --outfile ./dist-bin/chex",
     "prepublishOnly": "bun run build && bun test ./tests/"
   },
   "engines": {
@@ -43,8 +45,8 @@
     "validation",
     "schema",
     "regex",
-    "typescript",
-    "declarations"
+    "cli",
+    "executable"
   ],
   "author": "Chidelma",
   "devDependencies": {

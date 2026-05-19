@@ -13,8 +13,8 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
-    "types": ["bun-types"]
+    "types": []
   },
-  "include": ["src/**/*.js"],
-  "exclude": ["node_modules", "tests", "types", "graphify-out"]
+  "include": ["src/**/*.js", "src/**/*.d.ts"],
+  "exclude": ["node_modules", "tests", "types", "graphify-out", "src/cli"]
 }
