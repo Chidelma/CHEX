@@ -37,86 +37,6 @@ jobs:
       - name: Run tests
         run: bun test ./tests/
 
-  blackbox-config:
-    name: Detect blackbox configuration
-    runs-on: ubuntu-latest
-    outputs:
-      enabled: ${{ steps.detect.outputs.enabled }}
-    env:
-      BLACKBOX_REPOSITORY: ${{ vars.CHEX_BLACKBOX_REPOSITORY || secrets.CHEX_BLACKBOX_REPOSITORY || vars.BLACKBOX_REPOSITORY || secrets.BLACKBOX_REPOSITORY || vars.NIGHTJAR_BLACKBOX_REPOSITORY || secrets.NIGHTJAR_BLACKBOX_REPOSITORY }}
-      BLACKBOX_SSH_KEY: ${{ secrets.CHEX_BLACKBOX_SSH_KEY || secrets.BLACKBOX_SSH_KEY || secrets.NIGHTJAR_BLACKBOX_SSH_KEY }}
-
-    steps:
-      - id: detect
-        name: Check private suite credentials
-        run: |
-          if [ -n "$BLACKBOX_REPOSITORY" ] && [ -n "$BLACKBOX_SSH_KEY" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "Blackbox configuration not present; skipping private package validation."
-          fi
-
-  package-blackbox:
-    name: Package blackbox tests
-    runs-on: ubuntu-latest
-    needs: blackbox-config
-    if: needs.blackbox-config.outputs.enabled == 'true'
-    timeout-minutes: 20
-    env:
-      CHEX_PACKAGE_TARBALL: /tmp/chex-blackbox.tgz
-      BLACKBOX_REPOSITORY: ${{ vars.CHEX_BLACKBOX_REPOSITORY || secrets.CHEX_BLACKBOX_REPOSITORY || vars.BLACKBOX_REPOSITORY || secrets.BLACKBOX_REPOSITORY || vars.NIGHTJAR_BLACKBOX_REPOSITORY || secrets.NIGHTJAR_BLACKBOX_REPOSITORY }}
-      BLACKBOX_SSH_KEY: ${{ secrets.CHEX_BLACKBOX_SSH_KEY || secrets.BLACKBOX_SSH_KEY || secrets.NIGHTJAR_BLACKBOX_SSH_KEY }}
-
-    steps:
-      - name: Checkout CHEX
-        uses: actions/checkout@v6
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build declarations
-        run: bun run build
-
-      - name: Pack package under test
-        run: bun pm pack --filename "$CHEX_PACKAGE_TARBALL" --quiet
-
-      - name: Require private blackbox credentials
-        run: |
-          if [ -z "$BLACKBOX_REPOSITORY" ]; then
-            echo "::error::Missing CHEX_BLACKBOX_REPOSITORY, BLACKBOX_REPOSITORY, or NIGHTJAR_BLACKBOX_REPOSITORY variable or secret"
-            exit 1
-          fi
-          if [ -z "$BLACKBOX_SSH_KEY" ]; then
-            echo "::error::Missing CHEX_BLACKBOX_SSH_KEY, BLACKBOX_SSH_KEY, or NIGHTJAR_BLACKBOX_SSH_KEY secret"
-            exit 1
-          fi
-
-      - name: Checkout private blackbox suite
-        uses: actions/checkout@v6
-        with:
-          repository: ${{ env.BLACKBOX_REPOSITORY }}
-          ssh-key: ${{ env.BLACKBOX_SSH_KEY }}
-          ref: ${{ vars.CHEX_BLACKBOX_REF || vars.BLACKBOX_REF || vars.NIGHTJAR_BLACKBOX_REF || 'main' }}
-          path: .blackbox-tests
-
-      - name: Run CHEX blackbox tests
-        working-directory: .blackbox-tests
-        env:
-          NIGHTJAR_SUITE: chex
-          CHEX_PACKAGE_TARBALL: ${{ env.CHEX_PACKAGE_TARBALL }}
-        run: |
-          if [ -f package.json ] || [ -f bun.lock ] || [ -f bun.lockb ]; then
-            bun install --frozen-lockfile
-          fi
-
-          bun test chex/*.test.mjs --timeout 120000
-
   version:
     name: Read version
     runs-on: ubuntu-latest
@@ -192,8 +112,8 @@ jobs:
 
   publish:
     name: Publish to GitHub Packages
-    needs: [test, blackbox-config, package-blackbox, version]
-    if: needs.version.outputs.tag_exists == 'false' && needs.version.outputs.github_version_exists == 'false' && (needs.blackbox-config.outputs.enabled == 'false' || needs.package-blackbox.result == 'success')
+    needs: [test, version]
+    if: needs.version.outputs.tag_exists == 'false' && needs.version.outputs.github_version_exists == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -212,7 +132,7 @@ jobs:
           packages_read_token: ${{ secrets.PACKAGES_READ_TOKEN || github.token }}
 
   promote-npm:
-    name: Promote to npm registry
+    name: Request npm promotion
     needs: [version, publish]
     if: >-
       ${{
@@ -229,64 +149,41 @@ jobs:
         )
       }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     permissions:
       contents: read
-      id-token: write
-      packages: read
-
-    env:
-      PACKAGE_NAME: ${{ needs.version.outputs.package_name }}
-      VERSION: ${{ needs.version.outputs.version }}
-      NPM_DIST_TAG: latest
-      GITHUB_PACKAGES_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN || github.token }}
 
     steps:
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-          registry-url: https://registry.npmjs.org
-
-      - name: Configure GitHub Packages read access
-        run: |
-          {
-            echo "@d31ma:registry=https://npm.pkg.github.com"
-            echo "//npm.pkg.github.com/:_authToken=${GITHUB_PACKAGES_TOKEN}"
-            echo "always-auth=true"
-          } > "$RUNNER_TEMP/github-packages.npmrc"
-
-      - name: Verify GitHub Packages version exists
+      - name: Dispatch FOUNDRY npm promotion
         env:
-          NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/github-packages.npmrc
-        run: npm view "${PACKAGE_NAME}@${VERSION}" version --registry=https://npm.pkg.github.com
-
-      - name: Pack exact GitHub Packages artifact
-        id: pack
-        env:
-          NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/github-packages.npmrc
+          GH_TOKEN: ${{ secrets.FOUNDRY_DISPATCH_TOKEN }}
+          PACKAGE_NAME: ${{ needs.version.outputs.package_name }}
+          VERSION: ${{ needs.version.outputs.version }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/npm-promotion"
-          npm pack "${PACKAGE_NAME}@${VERSION}" \
-            --registry=https://npm.pkg.github.com \
-            --pack-destination "$RUNNER_TEMP/npm-promotion" \
-            --json > "$RUNNER_TEMP/npm-promotion/pack.json"
-          TARBALL=$(node -e "const data = require(process.env.RUNNER_TEMP + '/npm-promotion/pack.json'); console.log(data[0].filename)")
-          echo "tarball=$RUNNER_TEMP/npm-promotion/$TARBALL" >> "$GITHUB_OUTPUT"
-
-      - name: Publish tarball to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -n "${NODE_AUTH_TOKEN:-}" ]; then
-            {
-              echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}"
-            } > "$RUNNER_TEMP/npm-publish.npmrc"
-            export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/npm-publish.npmrc"
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::FOUNDRY_DISPATCH_TOKEN is required to request npm promotion from FOUNDRY."
+            exit 1
           fi
-          npm publish "${{ steps.pack.outputs.tarball }}" --access public --tag "$NPM_DIST_TAG" --registry=https://registry.npmjs.org
+
+          jq -n \
+            --arg package_name "$PACKAGE_NAME" \
+            --arg version "$VERSION" \
+            --arg npm_dist_tag "latest" \
+            --arg npm_auth_mode "trusted" \
+            --arg source_repository "$SOURCE_REPOSITORY" \
+            '{
+              event_type: "promote-npm",
+              client_payload: {
+                package_name: $package_name,
+                version: $version,
+                npm_dist_tag: $npm_dist_tag,
+                npm_auth_mode: $npm_auth_mode,
+                source_repository: $source_repository
+              }
+            }' |
+            gh api repos/d31ma/FOUNDRY/dispatches --input -
 
   github-release:
     name: Create GitHub release

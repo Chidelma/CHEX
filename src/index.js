@@ -1,85 +1,73 @@
 /**
- * @fileoverview CHEX — JSON-schema-driven validation and TypeScript
- * declaration generation for Bun.
+ * @fileoverview CHEX — regex-driven JSON schema validation for Bun and
+ * compiled CLI usage.
  *
- * The default export `Generator` is a static-class facade preserved for
- * backward compatibility. New code should prefer the named exports:
+ * The default export `Chex` is a static-class facade preserved for backward
+ * compatibility. New code should prefer the named export:
  *
- *   import { generateDeclaration, validateData } from '@d31ma/chex';
+ *   import { validateData } from '@d31ma/chex';
  *
  * @author Chidelma
  * @license MIT
  */
 
 import {
-  generateDeclaration,
-  fromObject,
-  fromJsonString,
-} from './declaration/generate.js';
-import {
-  INDENT,
-  sanitizePropertyName,
-  toPascalCase,
-  isRecordType,
-  config as propertiesConfig,
-} from './declaration/properties.js';
-import {
   normalizeSchemaDir,
+  normalizeSchemaPath,
   getSchemaPath,
+  loadSchema,
   loadCollectionSchema,
 } from './schema/loader.js';
+import { isRecordType } from './schema/shape.js';
 import { validateData } from './validation/validate.js';
 
 export {
-  generateDeclaration,
-  fromObject,
-  fromJsonString,
   validateData,
-  sanitizePropertyName,
-  toPascalCase,
   isRecordType,
   normalizeSchemaDir,
+  normalizeSchemaPath,
+  loadSchema,
 };
 
 export * from './errors.js';
 
 /**
- * Static-class facade. Mutating `Generator.CHEX_SCHEMA_DIR` after import is
- * supported and takes effect on the next `validateData` call.
+ * Static-class facade preserved for backward compatibility.
  */
-export default class Generator {
-  static INDENT = INDENT;
-
-  /** @type {string|null|undefined} */
-  static CHEX_SCHEMA_DIR =
-    typeof window !== 'undefined' ? '.' : process.env.CHEX_SCHEMA_DIR;
-
+export default class Chex {
   /** @type {Map<string, Record<string, unknown>>} */
-  static collectionSchemas = new Map();
+  static schemaCache = new Map();
 
-  static get allowedSpecialCharacters() { return propertiesConfig.allowedSpecialCharacters; }
-  static set allowedSpecialCharacters(chars) { propertiesConfig.allowedSpecialCharacters = chars; }
+  /** @deprecated Use `schemaCache`. */
+  static collectionSchemas = Chex.schemaCache;
 
   static normalizeSchemaDir = normalizeSchemaDir;
-  static sanitizePropertyName = sanitizePropertyName;
-  static toPascalCase = toPascalCase;
+  static normalizeSchemaPath = normalizeSchemaPath;
   static isRecordType = isRecordType;
-  static generateDeclaration = generateDeclaration;
-  static fromObject = fromObject;
-  static fromJsonString = fromJsonString;
 
-  static getSchemaPath(collection) {
-    return getSchemaPath(collection, this.CHEX_SCHEMA_DIR);
+  static getSchemaPath(schemaName) {
+    return getSchemaPath(schemaName, undefined);
   }
 
-  static loadCollectionSchema(collection) {
-    return loadCollectionSchema(collection, this.CHEX_SCHEMA_DIR);
+  static loadSchema(schemaPath) {
+    return loadSchema({ schemaPath });
   }
 
-  static validateData(collection, data) {
-    return validateData(collection, data, {
-      schemaDir: this.CHEX_SCHEMA_DIR,
-      cache: this.collectionSchemas,
+  static loadCollectionSchema(schemaName) {
+    return loadCollectionSchema(schemaName, undefined);
+  }
+
+  /**
+   * @param {string} schemaRef
+   * @param {Record<string, unknown>} data
+   * @param {{ schemaPath?: string|null, schemaDir?: string|null, cache?: Map<string, Record<string, unknown>> }} [options]
+   * @returns {Promise<Record<string, unknown>>}
+   */
+  static validateData(schemaRef, data, options = {}) {
+    return validateData(schemaRef, data, {
+      schemaPath: options.schemaPath,
+      cache: this.schemaCache,
+      ...options,
     });
   }
 }

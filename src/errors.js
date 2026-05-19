@@ -5,7 +5,7 @@
  *
  *   import { ValidationError, SchemaLoadError } from '@d31ma/chex';
  *
- *   try { await Gen.validateData('user', input); }
+ *   try { await Gen.validateData('./schemas/user.schema.json', input); }
  *   catch (err) {
  *     if (err instanceof ValidationError) { ... }
  *     else if (err instanceof SchemaLoadError) { ... }
@@ -19,7 +19,7 @@ export class ChexError extends Error {
   }
 }
 
-/** Configuration is missing or invalid (e.g. CHEX_SCHEMA_DIR not set). */
+/** Configuration is missing or invalid. */
 export class ConfigError extends ChexError {}
 
 /** Caller passed an input shape CHEX cannot accept. */
