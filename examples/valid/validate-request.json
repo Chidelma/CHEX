@@ -4,7 +4,7 @@
   "schemaPath": "examples/valid/status.schema.json",
   "data": {
     "direction": "north",
-    "priority": "2",
+    "priority": 2,
     "label": "active",
     "tag": null
   }

@@ -1,6 +1,6 @@
 {
   "name": "@d31ma/chex",
-  "version": "26.21.02",
+  "version": "26.21.06",
   "description": "Language-agnostic regex-driven JSON schema validation for Bun and compiled executables",
   "main": "./src/index.js",
   "types": "./types/index.d.ts",
