@@ -14,12 +14,12 @@ describe('validateData', () => {
 
   const validPerson = () => ({
     name: 'Jane Doe',
-    age: '30',
-    active: 'true',
+    age: 30,
+    active: true,
     nickname: null,
     address: { city: 'Toronto', country: 'Canada' },
     tags: ['typescript', 'bun'],
-    scores: ['95', '87'],
+    scores: [95, 87],
     meta: { employer: 'ACME', dept: 'engineering' },
   });
 
@@ -27,7 +27,8 @@ describe('validateData', () => {
     const data = validPerson();
     const result = await Gen.validateData(personSchema, data);
     expect(result.name).toBe('Jane Doe');
-    expect(result.age).toBe('30');
+    expect(result.age).toBe(30);
+    expect(result.active).toBe(true);
   });
 
   it('skips regex validation for a null nullable property', async () => {
@@ -161,10 +162,22 @@ describe('validateData', () => {
     );
   });
 
-  it('throws when an array schema does not contain a regex pattern', () => {
+  it('throws when an array schema does not contain an item template', () => {
     return expect(Gen.validateData(invalidSchemaPath('empty-array-pattern'), { tags: ['bun'] }, { cache: new Map() })).rejects.toThrow(
       "Array schema for 'tags' in schema"
     );
+  });
+
+  it('throws when an array schema contains more than one item template', () => {
+    return expect(
+      Gen.validateData(invalidSchemaPath('multiple-array-templates'), { items: [] }, { cache: new Map() })
+    ).rejects.toThrow("Array schema for 'items' in schema");
+  });
+
+  it('throws when an array object schema is empty', () => {
+    return expect(
+      Gen.validateData(invalidSchemaPath('array-object-empty'), { items: [] }, { cache: new Map() })
+    ).rejects.toThrow("at 'items[]' must define at least one property");
   });
 
   it('throws when a schema regex pattern is invalid', () => {
@@ -181,6 +194,50 @@ describe('validateData', () => {
 });
 
 // ---------------------------------------------------------------------------
+// validateData — arrays of objects
+// ---------------------------------------------------------------------------
+
+describe('validateData (arrays of objects)', () => {
+  const orderSchema = validSchemaPath('order');
+
+  const validOrder = () => ({
+    orderId: 'ORD-1001',
+    items: [
+      { sku: 'BOOK-1', quantity: 2, giftWrap: false },
+      { sku: 'PEN-9', quantity: 12, giftWrap: true },
+    ],
+  });
+
+  it('passes when each object in an array matches the object template', async () => {
+    const data = validOrder();
+    const result = await Gen.validateData(orderSchema, data);
+    expect(result.items[0].quantity).toBe(2);
+    expect(result.items[1].giftWrap).toBe(true);
+  });
+
+  it('throws when an item in an object array is not an object', () => {
+    const data = { ...validOrder(), items: [{ sku: 'BOOK-1', quantity: 2 }, 'not-an-object'] };
+    return expect(Gen.validateData(orderSchema, data)).rejects.toThrow(
+      "Type mismatch for 'items[1]' in schema"
+    );
+  });
+
+  it('throws when an object array item has a property that fails its regex', () => {
+    const data = { ...validOrder(), items: [{ sku: 'book-1', quantity: 2 }] };
+    return expect(Gen.validateData(orderSchema, data)).rejects.toThrow(
+      "RegEx pattern fails for property 'items[0].sku' in schema"
+    );
+  });
+
+  it('throws when an object array item has an unknown property', () => {
+    const data = { ...validOrder(), items: [{ sku: 'BOOK-1', quantity: 2, color: 'blue' }] };
+    return expect(Gen.validateData(orderSchema, data)).rejects.toThrow(
+      "Property 'color' does not exist in schema"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // validateData — regex patterns
 // ---------------------------------------------------------------------------
 
@@ -189,7 +246,7 @@ describe('validateData (regex patterns)', () => {
 
   const validStatus = () => ({
     direction: 'north',
-    priority: '2',
+    priority: 2,
     label: 'active',
     tag: null,
   });
@@ -197,7 +254,7 @@ describe('validateData (regex patterns)', () => {
   it('passes when all regex patterns match', async () => {
     const result = await Gen.validateData(statusSchema, validStatus());
     expect(result.direction).toBe('north');
-    expect(result.priority).toBe('2');
+    expect(result.priority).toBe(2);
     expect(result.label).toBe('active');
   });
 
@@ -236,49 +293,49 @@ describe('validateData (regex patterns for numeric/string constraints)', () => {
   const measureSchema = validSchemaPath('measure');
 
   const validMeasure = () => ({
-    score: '50',
-    temperature: '-273.15',
-    quantity: '10',
+    score: 50,
+    temperature: -273.15,
+    quantity: 10,
     username: 'alice',
     code: 'AB12',
   });
 
   it('passes when all constrained values match their regex patterns', async () => {
     const result = await Gen.validateData(measureSchema, validMeasure());
-    expect(result.score).toBe('50');
+    expect(result.score).toBe(50);
   });
 
   // score: ^(100|[1-9]?[0-9])$  → 0-100
   it('passes at the minimum boundary (0)', async () => {
-    const result = await Gen.validateData(measureSchema, { ...validMeasure(), score: '0' });
-    expect(result.score).toBe('0');
+    const result = await Gen.validateData(measureSchema, { ...validMeasure(), score: 0 });
+    expect(result.score).toBe(0);
   });
 
   it('passes at the maximum boundary (100)', async () => {
-    const result = await Gen.validateData(measureSchema, { ...validMeasure(), score: '100' });
-    expect(result.score).toBe('100');
+    const result = await Gen.validateData(measureSchema, { ...validMeasure(), score: 100 });
+    expect(result.score).toBe(100);
   });
 
   it('throws when score is above maximum', () => {
-    return expect(Gen.validateData(measureSchema, { ...validMeasure(), score: '101' })).rejects.toThrow(
+    return expect(Gen.validateData(measureSchema, { ...validMeasure(), score: 101 })).rejects.toThrow(
       "RegEx pattern fails for property 'score' in schema"
     );
   });
 
   it('throws when score is negative', () => {
-    return expect(Gen.validateData(measureSchema, { ...validMeasure(), score: '-5' })).rejects.toThrow(
+    return expect(Gen.validateData(measureSchema, { ...validMeasure(), score: -5 })).rejects.toThrow(
       "RegEx pattern fails for property 'score' in schema"
     );
   });
 
   // quantity: ^[0-9]*[05]$ → multiples of 5
   it('passes when value is a multiple of 5', async () => {
-    const result = await Gen.validateData(measureSchema, { ...validMeasure(), quantity: '25' });
-    expect(result.quantity).toBe('25');
+    const result = await Gen.validateData(measureSchema, { ...validMeasure(), quantity: 25 });
+    expect(result.quantity).toBe(25);
   });
 
   it('throws when value is not a multiple of 5', () => {
-    return expect(Gen.validateData(measureSchema, { ...validMeasure(), quantity: '7' })).rejects.toThrow(
+    return expect(Gen.validateData(measureSchema, { ...validMeasure(), quantity: 7 })).rejects.toThrow(
       "RegEx pattern fails for property 'quantity' in schema"
     );
   });

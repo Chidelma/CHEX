@@ -144,12 +144,30 @@ class SchemaDefinitionValidator {
    * @param {string} fullPath
    */
   validateArray(schemaValue, fullPath) {
-    if (schemaValue.length !== 1 || typeof schemaValue[0] !== 'string') {
+    if (schemaValue.length !== 1) {
       throw new InvalidInputError(
-        `Array schema for '${ValidationMessage.truncate(fullPath)}' in schema '${ValidationMessage.truncate(this.schemaLabel)}' must contain exactly one regex string`
+        `Array schema for '${ValidationMessage.truncate(fullPath)}' in schema '${ValidationMessage.truncate(this.schemaLabel)}' must contain exactly one regex string or object schema`
       );
     }
-    new SchemaPattern(schemaValue[0], fullPath, this.schemaLabel).requireRegexString();
+
+    const itemSchema = schemaValue[0];
+    if (typeof itemSchema === 'string') {
+      new SchemaPattern(itemSchema, fullPath, this.schemaLabel).requireRegexString();
+      return;
+    }
+
+    if (typeof itemSchema === 'object' && itemSchema !== null && !Array.isArray(itemSchema)) {
+      new SchemaDefinitionValidator(
+        this.schemaLabel,
+        itemSchema,
+        `${fullPath}[]`
+      ).validate();
+      return;
+    }
+
+    throw new InvalidInputError(
+      `Array schema for '${ValidationMessage.truncate(fullPath)}' in schema '${ValidationMessage.truncate(this.schemaLabel)}' must contain exactly one regex string or object schema`
+    );
   }
 
   /**
@@ -279,9 +297,21 @@ class SchemaObjectValidator {
       if (!valueIsDefined && key.isNullable) return;
       if (!valueIsDefined) this.rejectMissing(fullPath);
       if (!Array.isArray(dataValue)) this.rejectTypeMismatch(fullPath, 'array');
-      if (schemaValue.length > 0 && typeof schemaValue[0] === 'string') {
+      const itemSchema = schemaValue[0];
+      if (typeof itemSchema === 'string') {
         for (const item of dataValue) {
-          this.validateLeaf(item, schemaValue[0], fullPath);
+          this.validateLeaf(item, itemSchema, fullPath);
+        }
+      } else if (typeof itemSchema === 'object' && itemSchema !== null && !Array.isArray(itemSchema)) {
+        for (const [index, item] of dataValue.entries()) {
+          if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+            this.rejectTypeMismatch(`${fullPath}[${index}]`, 'object');
+          }
+          new SchemaObjectValidator(
+            this.schemaLabel,
+            /** @type {Record<string, unknown>} */ (itemSchema),
+            `${fullPath}[${index}]`
+          ).validate(/** @type {Record<string, unknown>} */ (item));
         }
       }
       return;

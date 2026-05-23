@@ -1,7 +1,7 @@
 {
-  "score": "100",
-  "temperature": "25",
-  "quantity": "10",
+  "score": 100,
+  "temperature": 25,
+  "quantity": 10,
   "username": "alice",
   "code": "AB12"
 }
