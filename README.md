@@ -8,7 +8,7 @@
   <a href="https://github.com/d31ma/CHEX/releases/latest"><img src="https://img.shields.io/github/v/release/d31ma/CHEX?label=release&color=2ea043" alt="Latest release"></a>
   <a href="https://github.com/d31ma/CHEX/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/d31ma/CHEX/ci.yml?branch=main&label=build" alt="Build status"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
-  <img src="https://img.shields.io/badge/clients-9%20languages-8957e5" alt="9 language clients">
+  <img src="https://img.shields.io/badge/clients-12%20languages-8957e5" alt="12 language clients">
   <a href="https://github.com/d31ma/CHEX/stargazers"><img src="https://img.shields.io/github/stars/d31ma/CHEX?style=flat&color=e3b341" alt="GitHub stars"></a>
 </p>
 
@@ -57,7 +57,7 @@ Numbers and booleans stay numbers and booleans — CHEX coerces to string only f
 
 ### 🌍 Any language
 
-Dependency-free client shims for **9 languages** — 8 drive a single `chex` binary; the web one validates in-browser.
+Dependency-free client shims for **12 languages** — 11 drive a single `chex` binary; the web one validates in-browser.
 
 </td>
 <td width="33%" valign="top">
@@ -239,6 +239,9 @@ or ends in `.schema.json`) or a **name** resolved against `schemaDir`.
 | Rust | [`clients/rust/chex.rs`](clients/rust/chex.rs) | `snake_case` |
 | C# | [`clients/csharp/Chex.cs`](clients/csharp/Chex.cs) | `PascalCase` |
 | Java | [`clients/java/Chex.java`](clients/java/Chex.java) | `camelCase` |
+| Swift | [`clients/swift/Chex.swift`](clients/swift/Chex.swift) | `camelCase` |
+| Kotlin | [`clients/kotlin/Chex.kt`](clients/kotlin/Chex.kt) | `camelCase` |
+| Dart | [`clients/dart/chex.dart`](clients/dart/chex.dart) | `camelCase` |
 | Web (browser) | [`clients/web/chex.mjs`](clients/web/chex.mjs) | `camelCase` |
 
 > The **web** client is the odd one out: a browser can't spawn the `chex` binary,
@@ -361,6 +364,47 @@ try (Chex c = new Chex()) {
     // data is a JSON object string (build it with Jackson/Gson); returns the response line
     String resp = c.validate("./schemas/person.schema.json", "{\"name\":\"Jane Doe\",\"age\":30}", null);
     c.validate("person", "{\"name\":\"Jane Doe\",\"age\":30}", "./schemas");
+}
+```
+
+</details>
+
+<details>
+<summary><strong>Swift</strong></summary>
+
+```swift
+let c = try CHEX()
+defer { c.close() }
+let data = try c.validate("./schemas/person.schema.json", ["name": "Jane Doe", "age": 30])
+// name form: resolve "person" against a directory
+try c.validate("person", ["name": "Jane Doe", "age": 30], schemaDir: "./schemas")
+```
+
+</details>
+
+<details>
+<summary><strong>Kotlin</strong></summary>
+
+```kotlin
+Chex().use { c ->
+    // data is a JSON object string (build it with kotlinx.serialization / Gson); returns the response line
+    val resp = c.validate("./schemas/person.schema.json", "{\"name\":\"Jane Doe\",\"age\":30}")
+    c.validate("person", "{\"name\":\"Jane Doe\",\"age\":30}", "./schemas")
+}
+```
+
+</details>
+
+<details>
+<summary><strong>Dart</strong></summary>
+
+```dart
+final c = await CHEX.open();
+try {
+  final data = await c.validate('./schemas/person.schema.json', {'name': 'Jane Doe', 'age': 30});
+  await c.validate('person', {'name': 'Jane Doe', 'age': 30}, schemaDir: './schemas');
+} finally {
+  await c.close();
 }
 ```
 
