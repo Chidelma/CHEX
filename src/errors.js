@@ -3,7 +3,7 @@
  *
  * Callers can `catch` by class instead of substring-matching messages:
  *
- *   import { ValidationError, SchemaLoadError } from '@d31ma/chex';
+ *   import { ValidationError, SchemaLoadError } from './errors.js';
  *
  *   try { await Gen.validateData('./schemas/user.schema.json', input); }
  *   catch (err) {

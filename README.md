@@ -1,6 +1,6 @@
 <div align="center">
   <p>
-    <a href="https://www.npmjs.com/package/@d31ma/chex"><img src="https://img.shields.io/npm/v/@d31ma/chex?style=flat&label=npm" alt="npm version"></a>
+    <a href="https://github.com/d31ma/CHEX/releases/latest"><img src="https://img.shields.io/github/v/release/d31ma/CHEX?style=flat&label=release" alt="latest release"></a>
     <a href="https://bun.sh"><img src="https://img.shields.io/badge/runtime-bun-f9f1e0?style=flat&logo=bun" alt="bun"></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat" alt="license"></a>
   </p>
@@ -39,7 +39,7 @@
 </td>
 <td width="33%" valign="top">
 <h3>Runtime Neutral</h3>
-<p>Use the Bun package directly, call the CLI from another language, or ship a compiled binary.</p>
+<p>Run the CLI, drop in a language shim, or ship the compiled binary. No package install, no native addon.</p>
 </td>
 <td width="33%" valign="top">
 <h3>Structured I/O</h3>
@@ -64,22 +64,32 @@
 
 ## Install
 
+CHEX ships as a single compiled binary plus thin per-language shims — no package
+manager, no native addon. Install the `chex` binary from the [latest release](https://github.com/d31ma/CHEX/releases/latest):
+
+macOS/Linux:
+
 ```bash
-bun add @d31ma/chex
+curl -fsSL https://github.com/d31ma/CHEX/releases/latest/download/install.sh | sh
 ```
 
-That installs the public stable release from npm by default.
+Windows (PowerShell):
 
-If you are a `d31ma` member and want the private beta channel from GitHub Packages instead, configure a user-level `.npmrc`:
-
-```ini
-# ~/.npmrc
-@d31ma:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${GITHUB_PACKAGES_TOKEN}
-always-auth=true
+```powershell
+irm https://github.com/d31ma/CHEX/releases/latest/download/install.ps1 | iex
 ```
 
-After that, the same `bun add @d31ma/chex` command resolves from GitHub Packages for your user.
+Then verify: `chex --help`. Or build it yourself from this repo:
+
+```bash
+bun run build:exe   # → ./dist-bin/chex
+```
+
+### Use it from your language
+
+Drop the one-file shim for your language ([`clients/`](clients/)) next to your
+code — it drives the `chex` binary over stdio, no dependencies. Supported:
+Python, Ruby, Node/TS, PHP, Go, Rust, C#, Java. See [`clients/README.md`](clients/README.md).
 
 ---
 
@@ -96,19 +106,20 @@ Create a schema:
 }
 ```
 
-Validate data from JavaScript:
+Validate data from any language via its shim (Node shown; see [`clients/`](clients/)):
 
 ```js
-import { validateData } from '@d31ma/chex';
+import { CHEX } from './clients/node/chex.mjs';
 
-const data = await validateData('./schemas/person.schema.json', {
+const c = new CHEX();
+const data = await c.validate('./schemas/person.schema.json', {
   name: 'Jane Doe',
   age: 30,
   active: true,
   tags: ['bun', 'validation'],
 });
-
 console.log(data);
+await c.close();
 ```
 
 Validate the same data from a shell:
@@ -149,6 +160,7 @@ Useful commands:
 <tr><td><code>cat data.json | chex validate &lt;schema-path&gt; -</code></td><td>Validate data read from stdin</td></tr>
 <tr><td><code>chex validate person @./data.json --schema-dir ./schemas</code></td><td>Resolve <code>person</code> as <code>./schemas/person.schema.json</code></td></tr>
 <tr><td><code>chex exec --request @./request.json</code></td><td>Run the machine interface from a request file</td></tr>
+<tr><td><code>chex exec --loop</code></td><td>Persistent NDJSON loop over stdio — what the language shims drive</td></tr>
 </table>
 
 Build a standalone executable:
@@ -310,25 +322,20 @@ This also lets you constrain numeric-looking keys:
 
 ## API
 
-```js
-import { validateData } from '@d31ma/chex';
-
-await validateData(schemaRef, data, {
-  schemaPath: './schemas/person.schema.json',
-  schemaDir: './schemas',
-  cache: new Map(),
-});
-```
-
-`schemaRef` is treated as an exact schema path when it includes a path separator or ends with `.schema.json`. If `schemaDir` is provided, `schemaRef` is treated as a schema name and resolved as `<schemaDir>/<schemaRef>.schema.json`.
-
-The default export is a static-class facade preserved for compatibility:
+Each language shim exposes a single `validate` method (see [`clients/`](clients/)):
 
 ```js
-import Chex from '@d31ma/chex';
+import { CHEX } from './clients/node/chex.mjs';
 
-await Chex.validateData('./schemas/person.schema.json', data);
+const c = new CHEX();
+// path form — schema includes a separator or ends with .schema.json
+await c.validate('./schemas/person.schema.json', data);
+// name form — resolved as <schemaDir>/<schema>.schema.json
+await c.validate('person', data, './schemas');
+await c.close();
 ```
+
+`schema` is treated as an exact schema path when it includes a path separator or ends with `.schema.json`. Otherwise, when `schemaDir` is provided, it is treated as a schema name and resolved as `<schemaDir>/<schema>.schema.json`. `validate` returns the validated data and throws when the data does not match.
 
 ---
 

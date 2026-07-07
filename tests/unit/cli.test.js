@@ -4,11 +4,30 @@ import {
   executeMachineOperation,
   machineErrorResponse,
   machineSuccessResponse,
+  serveStdioLoop,
 } from '../../src/cli/machine.js';
 
 const repo = process.cwd();
 const schemaDir = path.join(repo, 'examples', 'valid');
 const measureSchemaPath = path.join(schemaDir, 'measure.schema.json');
+
+describe('serveStdioLoop', () => {
+  it('answers NDJSON requests in order, one response per line', async () => {
+    const input = [
+      `${JSON.stringify({ requestId: 'ok', op: 'validate', schemaPath: measureSchemaPath, data: { score: '100', temperature: '25', quantity: '10', username: 'alice', code: 'AB12' } })}\n`,
+      `${JSON.stringify({ requestId: 'bad', op: 'validate', schemaPath: measureSchemaPath, data: { score: 'nope' } })}\n`,
+      'not json\n',
+    ];
+    let out = '';
+    await serveStdioLoop({ input, write: (line) => (out += line) });
+
+    const lines = out.trim().split('\n').map((l) => JSON.parse(l));
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toMatchObject({ ok: true, requestId: 'ok' });
+    expect(lines[1]).toMatchObject({ ok: false, requestId: 'bad' });
+    expect(lines[2].ok).toBe(false); // invalid JSON line still yields an error envelope
+  });
+});
 
 describe('machine interface', () => {
   it('executes validation requests', async () => {

@@ -1,27 +1,16 @@
 {
-  "name": "@d31ma/chex",
-  "version": "26.21.06",
+  "name": "chex",
+  "version": "26.28.02",
   "description": "Language-agnostic regex-driven JSON schema validation for Bun and compiled executables",
   "main": "./src/index.js",
   "types": "./types/index.d.ts",
   "type": "module",
-  "bin": {
-    "chex": "./src/cli/index.js"
-  },
-  "files": [
-    "src/",
-    "types/",
-    "examples/",
-    "LICENSE",
-    "README.md"
-  ],
   "scripts": {
     "test": "bun test ./tests/",
     "test:watch": "bun test --watch ./tests/",
     "typecheck": "bun ./node_modules/typescript/bin/tsc --noEmit",
     "build": "bun ./node_modules/typescript/bin/tsc",
-    "build:exe": "mkdir -p ./dist-bin && bun build --compile ./src/cli/index.js --outfile ./dist-bin/chex",
-    "prepublishOnly": "bun run build && bun test ./tests/"
+    "build:exe": "mkdir -p ./dist-bin && bun build --compile ./src/cli/index.js --outfile ./dist-bin/chex"
   },
   "engines": {
     "bun": ">=1.2.0"
@@ -29,10 +18,6 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/d31ma/CHEX.git"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
-    "tag": "beta"
   },
   "homepage": "https://github.com/d31ma/CHEX#readme",
   "bugs": {
