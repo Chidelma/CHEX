@@ -8,7 +8,7 @@
   <a href="https://github.com/d31ma/CHEX/releases/latest"><img src="https://img.shields.io/github/v/release/d31ma/CHEX?label=release&color=2ea043" alt="Latest release"></a>
   <a href="https://github.com/d31ma/CHEX/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/d31ma/CHEX/ci.yml?branch=main&label=build" alt="Build status"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
-  <img src="https://img.shields.io/badge/clients-8%20languages-8957e5" alt="8 language clients">
+  <img src="https://img.shields.io/badge/clients-9%20languages-8957e5" alt="9 language clients">
   <a href="https://github.com/d31ma/CHEX/stargazers"><img src="https://img.shields.io/github/stars/d31ma/CHEX?style=flat&color=e3b341" alt="GitHub stars"></a>
 </p>
 
@@ -57,7 +57,7 @@ Numbers and booleans stay numbers and booleans — CHEX coerces to string only f
 
 ### 🌍 Any language
 
-Dependency-free client shims for **8 languages** drive a single `chex` binary.
+Dependency-free client shims for **9 languages** — 8 drive a single `chex` binary; the web one validates in-browser.
 
 </td>
 <td width="33%" valign="top">
@@ -239,6 +239,12 @@ or ends in `.schema.json`) or a **name** resolved against `schemaDir`.
 | Rust | [`clients/rust/chex.rs`](clients/rust/chex.rs) | `snake_case` |
 | C# | [`clients/csharp/Chex.cs`](clients/csharp/Chex.cs) | `PascalCase` |
 | Java | [`clients/java/Chex.java`](clients/java/Chex.java) | `camelCase` |
+| Web (browser) | [`clients/web/chex.mjs`](clients/web/chex.mjs) | `camelCase` |
+
+> The **web** client is the odd one out: a browser can't spawn the `chex` binary,
+> so it runs the validation rules in-process against an in-memory schema object —
+> no binary, no network. A faithful port of the engine, kept in lockstep by a
+> parity test.
 
 <details open>
 <summary><strong>Python</strong></summary>
@@ -356,6 +362,21 @@ try (Chex c = new Chex()) {
     String resp = c.validate("./schemas/person.schema.json", "{\"name\":\"Jane Doe\",\"age\":30}", null);
     c.validate("person", "{\"name\":\"Jane Doe\",\"age\":30}", "./schemas");
 }
+```
+
+</details>
+
+<details>
+<summary><strong>Web (browser)</strong></summary>
+
+Runs in-process against a schema **object** — no binary, no `schemaDir`.
+
+```js
+import { validate } from './chex.mjs'
+
+const schema = { name: '^[A-Za-z]+ [A-Za-z]+$', age: '^[0-9]+$' }
+const data = validate(schema, { name: 'Jane Doe', age: 30 })  // returns the data
+// throws CHEXError on a schema mismatch
 ```
 
 </details>

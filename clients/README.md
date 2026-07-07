@@ -14,6 +14,13 @@ drop in one file for your language and validate JSON against `*.schema.json` fil
 | Rust          | `rust/chex.rs`         | none (std)      |
 | C#            | `csharp/Chex.cs`       | none (BCL)      |
 | Java          | `java/Chex.java`       | none (JDK)      |
+| Web (browser) | `web/chex.mjs`         | none (in-process) |
+
+> **The web client is the exception.** A browser can't spawn the `chex` binary
+> (no subprocess, no filesystem, no network), so `web/chex.mjs` runs the CHEX
+> validation rules **in-process** against an in-memory schema object — no binary
+> required. It's a faithful port of the binary's validator, kept in lockstep by a
+> parity test. See [The web client](#the-web-client) below.
 
 ## Install the binary
 
@@ -82,3 +89,25 @@ with CHEX() as c:
 Construct, call `validate`, close when done (or use a
 `with`/`using`/`try`-with-resources block). Each file's header comment has a
 runnable example in that language.
+
+## The web client
+
+`web/chex.mjs` is for browser JavaScript/TypeScript. It does **not** drive the
+binary — a browser has no subprocess, filesystem, or network to reach it — so it
+runs the CHEX validation rules in-process against a schema **object** you already
+have in memory (fetched or imported, since the browser can't read a
+`*.schema.json` file from disk). Zero dependencies, no binary, no build step.
+
+```js
+import { validate } from './chex.mjs'
+
+const schema = { name: '^[A-Za-z]+ [A-Za-z]+$', age: '^[0-9]+$' }
+const data = validate(schema, { name: 'Jane Doe', age: 30 })  // returns the data
+// throws CHEXError on a schema mismatch
+```
+
+The validation semantics — regex leaves, string coercion, nullable `?` keys,
+nested objects, arrays, records, unknown-property rejection — match the binary
+exactly, enforced by `tests/unit/web-client.test.js` (every case is run through
+both the shim and the real engine). It works in Node/Bun too, which is how the
+parity test exercises it.
