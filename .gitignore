@@ -4,6 +4,7 @@ node_modules
 # Build artifacts
 types/
 dist-bin/
+__pycache__/
 
 # Graphify
 .graphify*

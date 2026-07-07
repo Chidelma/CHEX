@@ -5,7 +5,7 @@
  * The default export `Chex` is a static-class facade preserved for backward
  * compatibility. New code should prefer the named export:
  *
- *   import { validateData } from '@d31ma/chex';
+ *   import { validateData } from './index.js';
  *
  * @author Chidelma
  * @license MIT

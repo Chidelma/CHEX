@@ -4,6 +4,7 @@ import {
   executeMachineOperation,
   machineErrorResponse,
   machineSuccessResponse,
+  serveStdioLoop,
 } from './machine.js';
 
 const HELP = `chex — regex-driven JSON schema validation
@@ -11,10 +12,12 @@ const HELP = `chex — regex-driven JSON schema validation
 Usage:
   chex validate <schema|schema-path> <json|@path|-> [--schema-dir <path>]
   chex exec --request <json|@path|->
+  chex exec --loop
 
 Options:
   --schema-dir <path>  Resolve the schema argument as <path>/<schema>.schema.json
   --request <value>    Machine request payload, @file path, or - for stdin
+  --loop               Persistent NDJSON loop: one request/response per line on stdio
   -h, --help           Show this help and exit
 
 Machine request:
@@ -27,6 +30,7 @@ All commands write structured JSON to stdout.`;
  * @property {string[]} positionals
  * @property {string | undefined} schemaDir
  * @property {string | undefined} request
+ * @property {boolean} loop
  * @property {boolean} help
  */
 
@@ -45,6 +49,7 @@ class CliArgsParser {
     const positionals = [];
     let schemaDir;
     let request;
+    let loop = false;
     let help = false;
 
     for (let index = 0; index < this.argv.length; index++) {
@@ -63,6 +68,10 @@ class CliArgsParser {
         index++;
         continue;
       }
+      if (arg === '--loop') {
+        loop = true;
+        continue;
+      }
       if (arg === '--help' || arg === '-h') {
         help = true;
         continue;
@@ -70,7 +79,7 @@ class CliArgsParser {
       positionals.push(arg);
     }
 
-    return { positionals, schemaDir, request, help };
+    return { positionals, schemaDir, request, loop, help };
   }
 }
 
@@ -178,6 +187,11 @@ class ChexCliApp {
       if (args.help || args.positionals.length === 0) {
         console.log(HELP);
         process.exit(args.help ? 0 : 1);
+      }
+
+      if (args.positionals[0] === 'exec' && args.loop) {
+        await serveStdioLoop();
+        process.exit(0);
       }
 
       this.request = await new MachineRequestBuilder(args).build();
