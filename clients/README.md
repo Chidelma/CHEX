@@ -14,6 +14,9 @@ drop in one file for your language and validate JSON against `*.schema.json` fil
 | Rust          | `rust/chex.rs`         | none (std)      |
 | C#            | `csharp/Chex.cs`       | none (BCL)      |
 | Java          | `java/Chex.java`       | none (JDK)      |
+| Swift         | `swift/Chex.swift`     | none (Foundation) |
+| Kotlin        | `kotlin/Chex.kt`       | none (JDK)      |
+| Dart          | `dart/chex.dart`       | none (SDK)      |
 | Web (browser) | `web/chex.mjs`         | none (in-process) |
 
 > **The web client is the exception.** A browser can't spawn the `chex` binary
@@ -52,10 +55,11 @@ paradigm** — `snake_case`/`camelCase`/`PascalCase` as appropriate:
   - Returns the validated data on success; **raises/throws** when the data does
     not match the schema (the thrown error carries CHEX's message).
 
-Dynamic-JSON languages (Python, Ruby, Node, PHP, Go, C#) take `data` as a native
-map/object. Static languages without a bundled JSON builder (Rust, Java) take
-`data` as a pre-serialized JSON **object string** and return the raw response
-line — build the object with serde_json / Jackson / Gson.
+Dynamic-JSON languages (Python, Ruby, Node, PHP, Go, C#, Swift, Dart) take `data`
+as a native map/object. Languages without a bundled JSON builder (Rust, Java,
+Kotlin) take `data` as a pre-serialized JSON **object string** and return the raw
+response line — build the object with serde_json / Jackson / Gson /
+kotlinx.serialization.
 
 For anything else, use the raw `request(op)` escape hatch — see `chex --help`
 and `src/cli/machine.js` for the machine protocol.
