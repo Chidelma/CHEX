@@ -1,32 +1,29 @@
 <div align="center">
-  <p>
-    <a href="https://github.com/d31ma/CHEX/releases/latest"><img src="https://img.shields.io/github/v/release/d31ma/CHEX?style=flat&label=release" alt="latest release"></a>
-    <a href="https://bun.sh"><img src="https://img.shields.io/badge/runtime-bun-f9f1e0?style=flat&logo=bun" alt="bun"></a>
-    <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat" alt="license"></a>
-  </p>
 
-  <h1>CHEX</h1>
+<h1>CHEX</h1>
 
-  <p>
-    <strong>Regex-driven JSON validation for every runtime that can speak JSON.</strong>
-  </p>
+<p><strong>Regex-driven JSON validation</strong> — validate data against plain <code>*.schema.json</code> files from any language, through a single binary.</p>
 
-  <p>
-    Use plain <code>*.schema.json</code> files in Bun apps, shell scripts, compiled executables,
-    or non-JavaScript services that need a small, predictable validation contract.
-  </p>
+<p>
+  <a href="https://github.com/d31ma/CHEX/releases/latest"><img src="https://img.shields.io/github/v/release/d31ma/CHEX?label=release&color=2ea043" alt="Latest release"></a>
+  <a href="https://github.com/d31ma/CHEX/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/d31ma/CHEX/ci.yml?branch=main&label=build" alt="Build status"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/clients-8%20languages-8957e5" alt="8 language clients">
+  <a href="https://github.com/d31ma/CHEX/stargazers"><img src="https://img.shields.io/github/stars/d31ma/CHEX?style=flat&color=e3b341" alt="GitHub stars"></a>
+</p>
 
-  <p>
-    <a href="#install"><strong>Install</strong></a>
-    ·
-    <a href="#quick-start"><strong>Quick Start</strong></a>
-    ·
-    <a href="#cli"><strong>CLI</strong></a>
-    ·
-    <a href="#schema-format"><strong>Schema Format</strong></a>
-    ·
-    <a href="examples/valid"><strong>Examples</strong></a>
-  </p>
+<p>
+  <code>curl -fsSL https://github.com/d31ma/CHEX/releases/latest/download/install.sh | sh</code>
+</p>
+
+<p>
+  <a href="#installation">Install</a> &nbsp;·&nbsp;
+  <a href="#language-clients">Clients</a> &nbsp;·&nbsp;
+  <a href="#cli-and-binary-usage">CLI</a> &nbsp;·&nbsp;
+  <a href="#schema-format">Schema</a> &nbsp;·&nbsp;
+  <a href="#api-reference">API</a>
+</p>
+
 </div>
 
 ---
@@ -34,68 +31,72 @@
 <table>
 <tr>
 <td width="33%" valign="top">
-<h3>One Schema Shape</h3>
-<p>Every leaf is a regex string. Objects, arrays, nullable fields, and records all build from that same rule.</p>
+
+### 🔤 Regex-first schemas
+
+Every leaf is a regex string. Objects, arrays, nullable fields, and records all build from that one rule — no framework-specific DSL.
+
 </td>
 <td width="33%" valign="top">
-<h3>Runtime Neutral</h3>
-<p>Run the CLI, drop in a language shim, or ship the compiled binary. No package install, no native addon.</p>
+
+### 📄 `*.schema.json`
+
+Schemas are plain JSON files that can live anywhere in your app. Clear intent, zero lock-in.
+
 </td>
 <td width="33%" valign="top">
-<h3>Structured I/O</h3>
-<p>Validation results and errors are JSON envelopes, so automation can consume them without scraping text.</p>
+
+### 🔢 Native JSON values
+
+Numbers and booleans stay numbers and booleans — CHEX coerces to string only for matching and returns your data untouched.
+
+</td>
+</tr>
+<tr>
+<td width="33%" valign="top">
+
+### 🌍 Any language
+
+Dependency-free client shims for **8 languages** drive a single `chex` binary.
+
+</td>
+<td width="33%" valign="top">
+
+### 📦 No package manager
+
+Ship one binary from GitHub Releases. No npm, no native addons, no build step.
+
+</td>
+<td width="33%" valign="top">
+
+### 🧩 Machine-friendly
+
+Every command emits a structured JSON envelope, so any runtime can call CHEX over stdio.
+
 </td>
 </tr>
 </table>
 
-## Highlights
+---
 
-<table>
-<tr><th align="left">Capability</th><th align="left">What it gives app authors</th></tr>
-<tr><td><strong>Regex-first schemas</strong></td><td>Small, portable validation files with no framework-specific schema DSL</td></tr>
-<tr><td><strong><code>*.schema.json</code> convention</strong></td><td>Clear schema intent while still letting schemas live anywhere in the app</td></tr>
-<tr><td><strong>Native JSON values</strong></td><td>Numbers and booleans can stay as numbers and booleans in data files</td></tr>
-<tr><td><strong>Nested structures</strong></td><td>Validate objects, scalar arrays, arrays of objects, nullable fields, and records</td></tr>
-<tr><td><strong>Language interop</strong></td><td>Python, Go, Ruby, PHP, Java, and shell callers can use the same validator through JSON</td></tr>
-<tr><td><strong>Executable builds</strong></td><td>Compile CHEX into a standalone binary with <code>bun build --compile</code></td></tr>
-</table>
+## Table of Contents
+
+- [Overview](#overview)
+- [Installation](#installation)
+- [CLI and Binary Usage](#cli-and-binary-usage)
+- [Language Clients](#language-clients)
+- [API Reference](#api-reference)
+- [Schema Format](#schema-format)
+- [Validation Guarantees](#validation-guarantees)
+- [Security](#security)
+- [License](#license)
 
 ---
 
-## Install
+## Overview
 
-CHEX ships as a single compiled binary plus thin per-language shims — no package
-manager, no native addon. Install the `chex` binary from the [latest release](https://github.com/d31ma/CHEX/releases/latest):
-
-macOS/Linux:
-
-```bash
-curl -fsSL https://github.com/d31ma/CHEX/releases/latest/download/install.sh | sh
-```
-
-Windows (PowerShell):
-
-```powershell
-irm https://github.com/d31ma/CHEX/releases/latest/download/install.ps1 | iex
-```
-
-Then verify: `chex --help`. Or build it yourself from this repo:
-
-```bash
-bun run build:exe   # → ./dist-bin/chex
-```
-
-### Use it from your language
-
-Drop the one-file shim for your language ([`clients/`](clients/)) next to your
-code — it drives the `chex` binary over stdio, no dependencies. Supported:
-Python, Ruby, Node/TS, PHP, Go, Rust, C#, Java. See [`clients/README.md`](clients/README.md).
-
----
-
-## Quick Start
-
-Create a schema:
+CHEX validates a JSON data object against a schema whose every leaf value is a
+regex pattern. A schema is just a `*.schema.json` file:
 
 ```json
 {
@@ -106,86 +107,83 @@ Create a schema:
 }
 ```
 
-Validate data from any language via its shim (Node shown; see [`clients/`](clients/)):
+Validation returns the original data on success and fails with a structured
+error on the first mismatch. Data values are coerced to strings for matching, so
+native JSON numbers and booleans work without pre-stringifying them.
 
-```js
-import { CHEX } from './clients/node/chex.mjs';
-
-const c = new CHEX();
-const data = await c.validate('./schemas/person.schema.json', {
-  name: 'Jane Doe',
-  age: 30,
-  active: true,
-  tags: ['bun', 'validation'],
-});
-console.log(data);
-await c.close();
-```
-
-Validate the same data from a shell:
-
-```bash
-chex validate ./schemas/person.schema.json '{"name":"Jane Doe","age":30,"active":true,"tags":["bun"]}'
-```
-
-Successful CLI responses are JSON:
-
-```json
-{
-  "protocolVersion": 1,
-  "ok": true,
-  "op": "validate",
-  "durationMs": 2,
-  "result": {
-    "name": "Jane Doe",
-    "age": 30,
-    "active": true,
-    "tags": ["bun"]
-  }
-}
-```
+CHEX ships as a single self-contained `chex` binary. Your app calls it directly
+on the CLI, or through a thin [client shim](clients/) for your language — no npm,
+no native addon.
 
 ---
 
-## CLI
+## Installation
 
-CHEX exposes a `chex` command. Every command writes structured JSON to stdout and exits non-zero on validation or input errors.
+CHEX ships as a single self-contained `chex` binary, published to
+[GitHub Releases](https://github.com/d31ma/CHEX/releases). Any language uses it
+through a thin [client shim](clients/) — no npm, no native addon.
 
-Useful commands:
+### Install the binary
 
-<table>
-<tr><th align="left">Command</th><th align="left">Description</th></tr>
-<tr><td><code>chex validate &lt;schema-path&gt; &lt;json&gt;</code></td><td>Validate inline JSON against an exact schema path</td></tr>
-<tr><td><code>chex validate &lt;schema-path&gt; @./data.json</code></td><td>Validate data loaded from a JSON file</td></tr>
-<tr><td><code>cat data.json | chex validate &lt;schema-path&gt; -</code></td><td>Validate data read from stdin</td></tr>
-<tr><td><code>chex validate person @./data.json --schema-dir ./schemas</code></td><td>Resolve <code>person</code> as <code>./schemas/person.schema.json</code></td></tr>
-<tr><td><code>chex exec --request @./request.json</code></td><td>Run the machine interface from a request file</td></tr>
-<tr><td><code>chex exec --loop</code></td><td>Persistent NDJSON loop over stdio — what the language shims drive</td></tr>
-</table>
-
-Build a standalone executable:
-
-```bash
-bun run build:exe
-./dist-bin/chex validate ./schemas/person.schema.json @./person.json
+```sh
+# macOS / Linux
+curl -fsSL https://github.com/d31ma/CHEX/releases/latest/download/install.sh | sh
 ```
+
+```powershell
+# Windows (PowerShell)
+irm https://github.com/d31ma/CHEX/releases/latest/download/install.ps1 | iex
+```
+
+The installer downloads the right binary for your OS/arch from the latest
+release, verifies its checksum, and puts `chex` on your PATH. Then verify:
+`chex --help`.
+
+Prefer to do it by hand? Download the asset for your platform from the
+[latest release](https://github.com/d31ma/CHEX/releases/latest) —
+`chex-linux-x64`, `chex-linux-arm64`, `chex-macos-x64`, `chex-macos-arm64`, or
+`chex-windows-x64.exe` — `chmod +x` it, and move it onto your PATH. Checksums are
+in `SHA256SUMS`.
+
+Or build it from source with [Bun](https://bun.sh):
+
+```sh
+bun run build:exe   # → ./dist-bin/chex
+```
+
+### Use it from your language
+
+Drop the one-file client for your language into your project and call CHEX like a
+library — it drives the `chex` binary for you. See [clients/](clients/) for
+Python, Ruby, Node/TS, PHP, Go, Rust, C#, and Java.
 
 ---
 
-## Machine Interface
+## CLI and Binary Usage
 
-Use `chex exec` when another runtime needs a stable request/response contract:
+CHEX exposes a `chex` command. Every command writes structured JSON to stdout and
+exits non-zero on validation or input errors, which makes it practical for
+Python, Go, Ruby, PHP, Java, shell scripts, and other runtimes to call.
 
-```bash
-chex exec --request '{
-  "requestId": "validate-1",
-  "op": "validate",
-  "schemaPath": "./schemas/person.schema.json",
-  "data": { "name": "Jane Doe", "age": 30 }
-}'
+```sh
+# Validate inline JSON against a schema path
+chex validate ./schemas/person.schema.json '{"name":"Jane Doe","age":30}'
+
+# Load the data from a file, or read it from stdin
+chex validate ./schemas/person.schema.json @./person.json
+cat person.json | chex validate ./schemas/person.schema.json -
+
+# Resolve a schema *name* against a directory: ./schemas/person.schema.json
+chex validate person @./person.json --schema-dir ./schemas
 ```
 
-Successful responses:
+For language interop, use the machine interface:
+
+```sh
+chex exec --request '{"requestId":"validate-1","op":"validate","schemaPath":"./schemas/person.schema.json","data":{"name":"Jane Doe","age":30}}'
+```
+
+Successful responses look like this:
 
 ```json
 {
@@ -198,7 +196,7 @@ Successful responses:
 }
 ```
 
-Error responses use the same envelope:
+Errors use the same envelope:
 
 ```json
 {
@@ -214,18 +212,206 @@ Error responses use the same envelope:
 }
 ```
 
+The language clients drive the persistent form, `chex exec --loop` — a
+newline-delimited JSON loop that keeps one warm process for many validations.
+
+---
+
+## Language Clients
+
+Any language uses CHEX through a thin, dependency-free [client shim](clients/)
+that drives the `chex` binary over a persistent stdin/stdout loop. Drop the one
+file for your language into your project and call `validate` like a library.
+Method names follow each language's own convention — `snake_case`, `camelCase`,
+or `PascalCase`. Full details in [clients/README.md](clients/README.md).
+
+Each `validate(schema, data[, schemaDir])` returns the validated data and
+raises/throws on a schema mismatch. `schema` is a **path** (contains a separator
+or ends in `.schema.json`) or a **name** resolved against `schemaDir`.
+
+| Language | Client file | Convention |
+| --- | --- | --- |
+| Python | [`clients/python/chex.py`](clients/python/chex.py) | `snake_case` |
+| Ruby | [`clients/ruby/chex.rb`](clients/ruby/chex.rb) | `snake_case` |
+| Node / TypeScript | [`clients/node/chex.mjs`](clients/node/chex.mjs) | `camelCase` |
+| PHP | [`clients/php/chex.php`](clients/php/chex.php) | `camelCase` |
+| Go | [`clients/go/chex.go`](clients/go/chex.go) | `PascalCase` |
+| Rust | [`clients/rust/chex.rs`](clients/rust/chex.rs) | `snake_case` |
+| C# | [`clients/csharp/Chex.cs`](clients/csharp/Chex.cs) | `PascalCase` |
+| Java | [`clients/java/Chex.java`](clients/java/Chex.java) | `camelCase` |
+
+<details open>
+<summary><strong>Python</strong></summary>
+
+```python
+from chex import CHEX
+
+with CHEX() as c:
+    data = c.validate("./schemas/person.schema.json", {"name": "Jane Doe", "age": 30})
+    print(data)  # {"name": "Jane Doe", "age": 30} — raises CHEXError on mismatch
+
+    # name form: resolve "person" against a directory
+    c.validate("person", {"name": "Jane Doe", "age": 30}, schema_dir="./schemas")
+```
+
+</details>
+
+<details>
+<summary><strong>Node / TypeScript</strong></summary>
+
+```js
+import { CHEX } from './chex.mjs'
+
+const c = new CHEX()
+const data = await c.validate('./schemas/person.schema.json', { name: 'Jane Doe', age: 30 })
+console.log(data)                 // validated data — throws on mismatch
+await c.validate('person', { name: 'Jane Doe', age: 30 }, './schemas')
+await c.close()
+```
+
+</details>
+
+<details>
+<summary><strong>Ruby</strong></summary>
+
+```ruby
+require_relative 'chex'
+
+CHEX.open do |c|
+  data = c.validate('./schemas/person.schema.json', { 'name' => 'Jane Doe', 'age' => 30 })
+  p data                                 # validated data — raises CHEX::Error on mismatch
+  c.validate('person', { 'name' => 'Jane Doe', 'age' => 30 }, schema_dir: './schemas')
+end
+```
+
+</details>
+
+<details>
+<summary><strong>PHP</strong></summary>
+
+```php
+require 'chex.php';
+
+$c = new CHEX();
+$data = $c->validate('./schemas/person.schema.json', ['name' => 'Jane Doe', 'age' => 30]);
+print_r($data);                          // validated data — throws CHEXException on mismatch
+$c->validate('person', ['name' => 'Jane Doe', 'age' => 30], './schemas');
+$c->close();
+```
+
+</details>
+
+<details>
+<summary><strong>Go</strong></summary>
+
+```go
+import "yourmodule/chex" // copy chex.go into a package dir
+
+c, _ := chex.Open("chex")
+defer c.Close()
+
+data, _ := c.Validate("./schemas/person.schema.json",
+    map[string]any{"name": "Jane Doe", "age": 30}, "")
+// name form: resolve "person" against a directory
+c.Validate("person", map[string]any{"name": "Jane Doe", "age": 30}, "./schemas")
+fmt.Println(data)
+```
+
+</details>
+
+<details>
+<summary><strong>Rust</strong></summary>
+
+```rust
+mod chex;
+use chex::Chex;
+
+let mut c = Chex::open("chex")?;
+// data is a JSON object string (build it with serde_json); returns the response line
+let resp = c.validate("./schemas/person.schema.json", r#"{"name":"Jane Doe","age":30}"#, None)?;
+c.validate("person", r#"{"name":"Jane Doe","age":30}"#, Some("./schemas"))?;
+c.close()?;
+```
+
+</details>
+
+<details>
+<summary><strong>C#</strong></summary>
+
+```csharp
+using var c = new Chex.Chex();
+JsonElement data = c.Validate("./schemas/person.schema.json",
+    new { name = "Jane Doe", age = 30 });   // validated data — throws ChexException on mismatch
+c.Validate("person", new { name = "Jane Doe", age = 30 }, "./schemas");
+```
+
+</details>
+
+<details>
+<summary><strong>Java</strong></summary>
+
+```java
+try (Chex c = new Chex()) {
+    // data is a JSON object string (build it with Jackson/Gson); returns the response line
+    String resp = c.validate("./schemas/person.schema.json", "{\"name\":\"Jane Doe\",\"age\":30}", null);
+    c.validate("person", "{\"name\":\"Jane Doe\",\"age\":30}", "./schemas");
+}
+```
+
+</details>
+
+---
+
+## API Reference
+
+Each client exposes a single method plus a raw escape hatch.
+
+### `validate(schema, data[, schemaDir])`
+
+Validate a JSON data object against a schema.
+
+**Parameters:**
+- `schema` — a **path** to a `*.schema.json` file (contains a path separator or
+  ends in `.schema.json`), or a schema **name** resolved as
+  `<schemaDir>/<schema>.schema.json` when `schemaDir` is given.
+- `data` — the object to validate. Dynamic-JSON languages (Python, Ruby, Node,
+  PHP, Go, C#) pass a native map/object; Rust and Java pass a pre-serialized JSON
+  object string.
+- `schemaDir` (optional) — directory to resolve a schema **name** against.
+
+**Returns:** the validated data (the original object, unchanged). Dynamic
+languages return the parsed value; Rust and Java return the raw JSON response
+line.
+
+**Raises / throws:** when the data does not match the schema, or the schema
+cannot be loaded. The error carries CHEX's message
+(e.g. `RegEx pattern fails for property 'age'…`).
+
+### `request(op)` — raw escape hatch
+
+Send one machine-protocol object and get the full response envelope back
+(`{ ok, result | error, … }`). Use it for any operation not wrapped by a method.
+See [`src/cli/machine.js`](src/cli/machine.js) and `chex --help`.
+
 ---
 
 ## Schema Format
 
-Schema files may live anywhere, but the schema path must end with `.schema.json`. File contents must be one valid JSON object, not JSONL. The top-level schema must be non-empty.
+Schema files may live anywhere, but the schema path must end with
+`.schema.json`. File contents must be one valid JSON object, not JSONL. The
+top-level schema must be non-empty.
 
-Every leaf value in a CHEX schema is a non-empty regex pattern string. Data values are coerced to strings for matching, so native JSON numbers and booleans are supported without pre-stringifying them. CHEX returns the original data object; it does not convert values in the result.
+Every leaf value in a CHEX schema is a non-empty regex pattern string. Data
+values are coerced to strings for matching, so native JSON numbers and booleans
+are supported without pre-stringifying them. CHEX returns the original data
+object; it does not convert values in the result.
 
-See [examples/valid](examples/valid/) for working schema and data pairs, and [examples/invalid](examples/invalid/) for schema files that CHEX intentionally rejects.
+See [examples/valid](examples/valid/) for working schema and data pairs, and
+[examples/invalid](examples/invalid/) for schema files that CHEX intentionally
+rejects.
 
 <details>
-<summary><h3 style="display:inline">Primitive Fields</h3></summary>
+<summary><strong>Primitive fields</strong></summary>
 
 ```json
 {
@@ -238,9 +424,10 @@ See [examples/valid](examples/valid/) for working schema and data pairs, and [ex
 </details>
 
 <details>
-<summary><h3 style="display:inline">Nullable Fields</h3></summary>
+<summary><strong>Nullable fields</strong></summary>
 
-Append `?` to a key name. If the data value is `null` or `undefined`, validation is skipped:
+Append `?` to a key name. If the data value is `null` or `undefined`, validation
+is skipped:
 
 ```json
 {
@@ -251,9 +438,10 @@ Append `?` to a key name. If the data value is `null` or `undefined`, validation
 </details>
 
 <details>
-<summary><h3 style="display:inline">Nested Objects</h3></summary>
+<summary><strong>Nested objects</strong></summary>
 
-Nested objects are validated recursively. Each leaf value is still a regex pattern:
+Nested objects are validated recursively. Each leaf value is still a regex
+pattern:
 
 ```json
 {
@@ -267,9 +455,10 @@ Nested objects are validated recursively. Each leaf value is still a regex patte
 </details>
 
 <details>
-<summary><h3 style="display:inline">Arrays</h3></summary>
+<summary><strong>Arrays</strong></summary>
 
-An array schema must contain exactly one item template. Use a regex pattern for scalar arrays:
+An array schema must contain exactly one item template. Use a regex pattern for
+scalar arrays:
 
 ```json
 {
@@ -294,9 +483,11 @@ Use an object template for arrays of objects:
 </details>
 
 <details>
-<summary><h3 style="display:inline">Records</h3></summary>
+<summary><strong>Records</strong></summary>
 
-An object is treated as a `Record<string, string>` type if its single key starts with `^`, which marks the key itself as the key regex. The value is the value regex:
+An object is treated as a `Record<string, string>` type if its single key starts
+with `^`, which marks the key itself as the key regex. The value is the value
+regex:
 
 ```json
 {
@@ -306,7 +497,7 @@ An object is treated as a `Record<string, string>` type if its single key starts
 }
 ```
 
-This also lets you constrain numeric-looking keys:
+You can also constrain numeric-looking keys:
 
 ```json
 {
@@ -317,25 +508,6 @@ This also lets you constrain numeric-looking keys:
 ```
 
 </details>
-
----
-
-## API
-
-Each language shim exposes a single `validate` method (see [`clients/`](clients/)):
-
-```js
-import { CHEX } from './clients/node/chex.mjs';
-
-const c = new CHEX();
-// path form — schema includes a separator or ends with .schema.json
-await c.validate('./schemas/person.schema.json', data);
-// name form — resolved as <schemaDir>/<schema>.schema.json
-await c.validate('person', data, './schemas');
-await c.close();
-```
-
-`schema` is treated as an exact schema path when it includes a path separator or ends with `.schema.json`. Otherwise, when `schemaDir` is provided, it is treated as a schema name and resolved as `<schemaDir>/<schema>.schema.json`. `validate` returns the validated data and throws when the data does not match.
 
 ---
 
@@ -352,35 +524,24 @@ await c.close();
 
 ## Security
 
-CHEX validates data shape and regex constraints. It does not provide authentication, authorization, or schema access control.
+CHEX validates data shape and regex constraints. It does not provide
+authentication, authorization, or schema access control.
 
-If callers provide schema paths, authorize and constrain those paths at your application boundary before passing them to CHEX. Treat schema files as trusted configuration: regexes are compiled and executed during validation, and overly broad schema access can expose files you did not intend to validate against.
+If callers provide schema paths, authorize and constrain those paths at your
+application boundary before passing them to CHEX. Treat schema files as trusted
+configuration: regexes are compiled and executed during validation, and overly
+broad schema access can expose files you did not intend to validate against.
 
----
-
-## Development
-
-```bash
-bun install
-bun test ./tests/
-bun run typecheck
-bun run build
-bun run build:exe
-```
-
-Project examples double as test fixtures:
-
-```text
-examples/
-  valid/
-    *.schema.json
-    *.data.json
-  invalid/
-    *.schema.json
-```
+The client shims spawn the `chex` binary directly with array arguments (no
+shell), so there is no command-injection surface — but the binary path itself is
+caller-controlled, so point it at a trusted `chex`.
 
 ---
 
 ## License
 
-MIT
+Released under the [MIT License](https://opensource.org/licenses/MIT).
+
+<div align="center">
+<sub>Built with <a href="https://bun.sh">Bun</a> · Distributed as a single binary via <a href="https://github.com/d31ma/CHEX/releases">GitHub Releases</a></sub>
+</div>
