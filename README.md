@@ -243,11 +243,13 @@ or ends in `.schema.json`) or a **name** resolved against `schemaDir`.
 | Kotlin | [`clients/kotlin/Chex.kt`](clients/kotlin/Chex.kt) | `camelCase` |
 | Dart | [`clients/dart/chex.dart`](clients/dart/chex.dart) | `camelCase` |
 | Web (browser) | [`clients/web/chex.mjs`](clients/web/chex.mjs) | `camelCase` |
+| Flutter (Dart) | [`clients/flutter/chex.dart`](clients/flutter/chex.dart) | `camelCase` |
 
-> The **web** client is the odd one out: a browser can't spawn the `chex` binary,
-> so it runs the validation rules in-process against an in-memory schema object —
-> no binary, no network. A faithful port of the engine, kept in lockstep by a
-> parity test.
+> The **web** and **Flutter** clients are the odd ones out: a browser and a
+> Flutter mobile/web app can't spawn the `chex` binary, so they run the
+> validation rules in-process against an in-memory schema object — no binary, no
+> network. Each is a faithful port of the engine, kept in lockstep by a parity
+> check.
 
 <details open>
 <summary><strong>Python</strong></summary>
@@ -420,6 +422,21 @@ import { validate } from './chex.mjs'
 
 const schema = { name: '^[A-Za-z]+ [A-Za-z]+$', age: '^[0-9]+$' }
 const data = validate(schema, { name: 'Jane Doe', age: 30 })  // returns the data
+// throws CHEXError on a schema mismatch
+```
+
+</details>
+
+<details>
+<summary><strong>Flutter (Dart, in-process)</strong></summary>
+
+Runs on every Flutter target (mobile, web, desktop) — no `dart:io`, no binary.
+
+```dart
+import 'chex.dart';
+
+final schema = {'name': r'^[A-Za-z]+ [A-Za-z]+$', 'age': r'^[0-9]+$'};
+final data = validate(schema, {'name': 'Jane Doe', 'age': 30}); // returns the data
 // throws CHEXError on a schema mismatch
 ```
 

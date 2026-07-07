@@ -18,12 +18,14 @@ drop in one file for your language and validate JSON against `*.schema.json` fil
 | Kotlin        | `kotlin/Chex.kt`       | none (JDK)      |
 | Dart          | `dart/chex.dart`       | none (SDK)      |
 | Web (browser) | `web/chex.mjs`         | none (in-process) |
+| Flutter (Dart)| `flutter/chex.dart`    | none (in-process) |
 
-> **The web client is the exception.** A browser can't spawn the `chex` binary
-> (no subprocess, no filesystem, no network), so `web/chex.mjs` runs the CHEX
-> validation rules **in-process** against an in-memory schema object — no binary
-> required. It's a faithful port of the binary's validator, kept in lockstep by a
-> parity test. See [The web client](#the-web-client) below.
+> **Two clients are in-process.** A browser and a Flutter mobile/web app can't
+> spawn the `chex` binary (no subprocess reachable — sandboxed, or no filesystem
+> at all), so `web/chex.mjs` and `flutter/chex.dart` run the CHEX validation
+> rules **in-process** against an in-memory schema object — no binary required.
+> Each is a faithful port of the binary's validator, kept in lockstep by a parity
+> check. See [In-process clients](#in-process-clients-web--flutter) below.
 
 ## Install the binary
 
@@ -94,13 +96,18 @@ Construct, call `validate`, close when done (or use a
 `with`/`using`/`try`-with-resources block). Each file's header comment has a
 runnable example in that language.
 
-## The web client
+## In-process clients (web & Flutter)
 
-`web/chex.mjs` is for browser JavaScript/TypeScript. It does **not** drive the
-binary — a browser has no subprocess, filesystem, or network to reach it — so it
-runs the CHEX validation rules in-process against a schema **object** you already
-have in memory (fetched or imported, since the browser can't read a
-`*.schema.json` file from disk). Zero dependencies, no binary, no build step.
+Two clients don't drive the binary — they run the CHEX validation rules
+in-process against a schema **object** you already have in memory (fetched or
+bundled as an asset, since these targets can't read a `*.schema.json` from disk).
+Zero dependencies, no binary, no build step. The validation semantics — regex
+leaves, string coercion, nullable `?` keys, nested objects, arrays, records,
+unknown-property rejection — match the binary exactly.
+
+### `web/chex.mjs` — browser JavaScript/TypeScript
+
+A browser has no subprocess, filesystem, or network to reach the binary.
 
 ```js
 import { validate } from './chex.mjs'
@@ -110,8 +117,25 @@ const data = validate(schema, { name: 'Jane Doe', age: 30 })  // returns the dat
 // throws CHEXError on a schema mismatch
 ```
 
-The validation semantics — regex leaves, string coercion, nullable `?` keys,
-nested objects, arrays, records, unknown-property rejection — match the binary
-exactly, enforced by `tests/unit/web-client.test.js` (every case is run through
-both the shim and the real engine). It works in Node/Bun too, which is how the
+Kept in lockstep by `tests/unit/web-client.test.js` — every case runs through
+both the shim and the real engine. It works in Node/Bun too, which is how the
 parity test exercises it.
+
+### `flutter/chex.dart` — Flutter (and any pure Dart)
+
+Flutter mobile and web can't spawn the binary either — iOS/Android sandboxes
+forbid exec of a bundled executable, and Flutter web has no `dart:io`. This
+validator uses no `dart:io`, so it runs on every Flutter target. (On Flutter
+**desktop** / Dart CLI you can instead use the process-based `dart/chex.dart`.)
+
+```dart
+import 'chex.dart';
+
+final schema = {'name': r'^[A-Za-z]+ [A-Za-z]+$', 'age': r'^[0-9]+$'};
+final data = validate(schema, {'name': 'Jane Doe', 'age': 30}); // returns the data
+// throws CHEXError on a schema mismatch
+```
+
+Kept in lockstep by `flutter/chex_parity.dart`, a runnable check that agrees the
+validator with the real binary over the same cases:
+`dart run clients/flutter/chex_parity.dart ./dist-bin/chex`.
