@@ -244,12 +244,15 @@ or ends in `.schema.json`) or a **name** resolved against `schemaDir`.
 | Dart | [`clients/dart/chex.dart`](clients/dart/chex.dart) | `camelCase` |
 | Web (browser) | [`clients/web/chex.mjs`](clients/web/chex.mjs) | `camelCase` |
 | Flutter (Dart) | [`clients/flutter/chex.dart`](clients/flutter/chex.dart) | `camelCase` |
+| iOS (Swift) | [`clients/ios/Chex.swift`](clients/ios/Chex.swift) | `camelCase` |
+| Android (Kotlin) | [`clients/android/Chex.kt`](clients/android/Chex.kt) | `camelCase` |
 
-> The **web** and **Flutter** clients are the odd ones out: a browser and a
-> Flutter mobile/web app can't spawn the `chex` binary, so they run the
-> validation rules in-process against an in-memory schema object — no binary, no
-> network. Each is a faithful port of the engine, kept in lockstep by a parity
-> check.
+> **Four clients are in-process.** A browser, a Flutter mobile/web app, an iOS
+> app, and an Android app can't spawn the `chex` binary (sandbox / no filesystem),
+> so they run the validation rules in-process against an in-memory schema object —
+> no binary, no network. Each is a faithful port of the engine, kept in lockstep
+> by a parity check. The binary-driving Swift and Kotlin clients above still serve
+> server-side Swift and JVM Kotlin, where the binary can be spawned.
 
 <details open>
 <summary><strong>Python</strong></summary>
@@ -438,6 +441,34 @@ import 'chex.dart';
 final schema = {'name': r'^[A-Za-z]+ [A-Za-z]+$', 'age': r'^[0-9]+$'};
 final data = validate(schema, {'name': 'Jane Doe', 'age': 30}); // returns the data
 // throws CHEXError on a schema mismatch
+```
+
+</details>
+
+<details>
+<summary><strong>iOS (Swift, in-process)</strong></summary>
+
+Foundation only, no subprocess — for iOS apps (the macOS/Linux binary client is `clients/swift/Chex.swift`).
+
+```swift
+import Foundation
+
+let schema: [String: Any] = ["name": "^[A-Za-z]+ [A-Za-z]+$", "age": "^[0-9]+$"]
+let data = try CHEXValidator.validate(schema, ["name": "Jane Doe", "age": 30])
+// throws CHEXError on a schema mismatch
+```
+
+</details>
+
+<details>
+<summary><strong>Android (Kotlin, in-process)</strong></summary>
+
+Kotlin stdlib only, native `Map`s — for Android apps (the JVM binary client is `clients/kotlin/Chex.kt`).
+
+```kotlin
+val schema = mapOf("name" to "^[A-Za-z]+ [A-Za-z]+$", "age" to "^[0-9]+$")
+val data = CHEXValidator.validate(schema, mapOf("name" to "Jane Doe", "age" to 30))
+// throws CHEXException on a schema mismatch
 ```
 
 </details>

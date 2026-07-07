@@ -19,13 +19,20 @@ drop in one file for your language and validate JSON against `*.schema.json` fil
 | Dart          | `dart/chex.dart`       | none (SDK)      |
 | Web (browser) | `web/chex.mjs`         | none (in-process) |
 | Flutter (Dart)| `flutter/chex.dart`    | none (in-process) |
+| iOS (Swift)   | `ios/Chex.swift`       | none (in-process) |
+| Android (Kotlin) | `android/Chex.kt`   | none (in-process) |
 
-> **Two clients are in-process.** A browser and a Flutter mobile/web app can't
-> spawn the `chex` binary (no subprocess reachable — sandboxed, or no filesystem
-> at all), so `web/chex.mjs` and `flutter/chex.dart` run the CHEX validation
-> rules **in-process** against an in-memory schema object — no binary required.
-> Each is a faithful port of the binary's validator, kept in lockstep by a parity
-> check. See [In-process clients](#in-process-clients-web--flutter) below.
+> **Four clients are in-process.** A browser, a Flutter mobile/web app, an iOS
+> app, and an Android app can't spawn the `chex` binary (no subprocess reachable —
+> sandboxed, or no filesystem at all). So `web/chex.mjs`, `flutter/chex.dart`,
+> `ios/Chex.swift`, and `android/Chex.kt` run the CHEX validation rules
+> **in-process** against an in-memory schema object — no binary required. Each is
+> a faithful port of the binary's validator, kept in lockstep by a parity check.
+> See [In-process clients](#in-process-clients) below.
+>
+> The binary-driving `swift/Chex.swift` and `kotlin/Chex.kt` stay useful for
+> server-side Swift and JVM Kotlin (Ktor, Spring, CLI, desktop), where the binary
+> *can* be spawned.
 
 ## Install the binary
 
@@ -96,9 +103,9 @@ Construct, call `validate`, close when done (or use a
 `with`/`using`/`try`-with-resources block). Each file's header comment has a
 runnable example in that language.
 
-## In-process clients (web & Flutter)
+## In-process clients
 
-Two clients don't drive the binary — they run the CHEX validation rules
+Four clients don't drive the binary — they run the CHEX validation rules
 in-process against a schema **object** you already have in memory (fetched or
 bundled as an asset, since these targets can't read a `*.schema.json` from disk).
 Zero dependencies, no binary, no build step. The validation semantics — regex
@@ -139,3 +146,35 @@ final data = validate(schema, {'name': 'Jane Doe', 'age': 30}); // returns the d
 Kept in lockstep by `flutter/chex_parity.dart`, a runnable check that agrees the
 validator with the real binary over the same cases:
 `dart run clients/flutter/chex_parity.dart ./dist-bin/chex`.
+
+### `ios/Chex.swift` — iOS (and any pure Swift)
+
+An iOS app can't exec a bundled binary (sandbox). This validator is Foundation
+only, no subprocess. (On macOS/Linux — server-side Swift, CLI — use the
+process-based `swift/Chex.swift` instead.)
+
+```swift
+import Foundation
+
+let schema: [String: Any] = ["name": "^[A-Za-z]+ [A-Za-z]+$", "age": "^[0-9]+$"]
+let data = try CHEXValidator.validate(schema, ["name": "Jane Doe", "age": 30])
+// throws CHEXError on a schema mismatch
+```
+
+Kept in lockstep by `ios/ChexParity.swift`:
+`swiftc clients/ios/Chex.swift clients/ios/ChexParity.swift -o /tmp/chex-ios && /tmp/chex-ios ./dist-bin/chex`.
+
+### `android/Chex.kt` — Android (and any pure Kotlin/JVM)
+
+An Android app can't exec a bundled binary (sandbox). This validator is Kotlin
+stdlib only, no subprocess, and takes native `Map`s. (On JVM server/desktop use
+the process-based `kotlin/Chex.kt` instead.)
+
+```kotlin
+val schema = mapOf("name" to "^[A-Za-z]+ [A-Za-z]+$", "age" to "^[0-9]+$")
+val data = CHEXValidator.validate(schema, mapOf("name" to "Jane Doe", "age" to 30))
+// throws CHEXException on a schema mismatch
+```
+
+Kept in lockstep by `android/ChexParity.kt`:
+`kotlinc clients/android/Chex.kt clients/android/ChexParity.kt -include-runtime -d /tmp/chex-android.jar && java -jar /tmp/chex-android.jar ./dist-bin/chex`.
