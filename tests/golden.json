@@ -575,7 +575,7 @@
       "requestId": null,
       "error": {
         "name": "SchemaLoadError",
-        "message": "Failed to load schema from '/Users/iyor/Library/CloudStorage/Dropbox/myOrganizations/DELMA/CHEX/examples/valid/missing-name.schema.json'"
+        "message": "Failed to load schema from '<MANIFEST_DIR>/examples/valid/missing-name.schema.json'"
       }
     }
   },

@@ -55,6 +55,8 @@ fn matches_the_recorded_envelopes() {
         let mut expected = case["envelope"].clone();
         drop_parser_detail(&mut envelope);
         drop_parser_detail(&mut expected);
+        fold_manifest_dir(&mut envelope);
+        fold_manifest_dir(&mut expected);
 
         if envelope != expected {
             failures.push(format!(
@@ -70,6 +72,22 @@ fn matches_the_recorded_envelopes() {
         cases.len(),
         failures.join("\n\n")
     );
+}
+
+/// `--schema-dir` is resolved to an absolute path, so a message quoting it
+/// carries whatever checkout the run happened in. The fixture records
+/// `<MANIFEST_DIR>` and the live message is folded back to it, which keeps the
+/// rest of the message — the part that is the contract — compared in full.
+fn fold_manifest_dir(envelope: &mut Value) {
+    let Some(message) = envelope.pointer_mut("/error/message") else {
+        return;
+    };
+    let Some(text) = message.as_str() else {
+        return;
+    };
+    if text.contains(env!("CARGO_MANIFEST_DIR")) {
+        *message = Value::String(text.replace(env!("CARGO_MANIFEST_DIR"), "<MANIFEST_DIR>"));
+    }
 }
 
 /// `Invalid JSON input: <detail>` carries the underlying parser's own wording.
