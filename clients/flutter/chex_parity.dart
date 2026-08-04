@@ -1,19 +1,21 @@
-// Parity check for the in-process Dart validator (chex.dart).
+// Checks both Flutter backends against the real `chex` binary (the oracle).
 //
-// Runs a battery of schema/data cases through BOTH the pure-Dart validator and
-// the real `chex` binary (the oracle), and asserts they agree on accept/reject.
-// This keeps the Flutter validator in lockstep with the binary the same way the
-// web JS client is kept in lockstep with the engine.
+// chex_ffi.dart calls the core, so what is being checked there is the binding —
+// request marshalling, allocation, error decoding. chex_web.dart is a genuine
+// reimplementation, so for it this is the lockstep guarantee it depends on.
 //
-//   dart run clients/flutter/chex_parity.dart ./dist-bin/chex
+//   CHEX_LIBRARY=target/release/libchex.dylib \
+//     dart run clients/flutter/chex_parity.dart ./target/release/chex
 //
 // Exits 0 when every case matches, 1 otherwise. Uses dart:io only in this
-// harness — the validator under test (chex.dart) stays pure Dart.
+// harness; the backends under test do not.
 
 import 'dart:convert';
 import 'dart:io';
 
-import 'chex.dart';
+import 'chex_error.dart';
+import 'chex_ffi.dart' as ffi;
+import 'chex_web.dart' as web;
 
 class Case {
   final String name;
@@ -46,9 +48,13 @@ const cases = <Case>[
   Case('record bad value', {'meta': {r'^[a-z]+$': r'^[0-9]+$'}}, {'meta': {'a': 'x'}}, false),
 ];
 
-bool inProcessAccepts(Map<String, dynamic> schema, Map<String, dynamic> data) {
+typedef Validator = Map<String, dynamic> Function(
+    Map<String, dynamic> schema, Map<String, dynamic> data,
+    {String label});
+
+bool accepts(Validator validator, Map<String, dynamic> schema, Map<String, dynamic> data) {
   try {
-    validate(schema, data);
+    validator(schema, data);
     return true;
   } on CHEXError {
     return false;
@@ -69,11 +75,12 @@ void main(List<String> args) {
   try {
     for (final c in cases) {
       final oracle = binaryAccepts(bin, dir, c.schema, c.data);
-      final inProc = inProcessAccepts(c.schema, c.data);
-      final ok = oracle == c.valid && inProc == oracle;
-      if (!ok) {
+      final viaFfi = accepts(ffi.validate, c.schema, c.data);
+      final viaWeb = accepts(web.validate, c.schema, c.data);
+      if (oracle != c.valid || viaFfi != oracle || viaWeb != oracle) {
         failures++;
-        stderr.writeln("MISMATCH ${c.name}: expected=${c.valid} binary=$oracle inProcess=$inProc");
+        stderr.writeln(
+            "MISMATCH ${c.name}: expected=${c.valid} binary=$oracle ffi=$viaFfi web=$viaWeb");
       }
     }
   } finally {

@@ -16,32 +16,46 @@ jobs:
   test:
     name: Test before release
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+      # rust-toolchain.toml pins the channel and the wasm32 target.
+      - name: Setup Rust
+        run: rustup show
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - name: Lint
+        run: cargo clippy --all-targets --locked -- -D warnings
 
-      - name: Type check
-        run: bun run typecheck
+      - name: Test
+        run: cargo test --locked
 
-      - name: Run tests
-        run: bun test ./tests/
+      # install.sh and install.ps1 ship as release assets; the checksum gate has
+      # to hold before anything is published.
+      - name: Test installer
+        run: sh tests/install.sh
+
+  installer-windows:
+    name: Test installer (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Test installer
+        shell: pwsh
+        run: pwsh -NoProfile -File tests/install.ps1
 
   version:
     name: Read version
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      version: ${{ steps.read.outputs.version }}
+      tag: ${{ steps.read.outputs.tag }}
       tag_exists: ${{ steps.check.outputs.exists }}
 
     steps:
@@ -50,17 +64,30 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Read package version
+      # Cargo.toml is the single source of truth for the version. Tags keep the
+      # zero-padded form CHEX has published since v26.21.02 (26.28.2 -> v26.28.02);
+      # semver forbids the leading zero, so it is reapplied here.
+      - name: Read crate version
         id: read
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Version: $VERSION"
+          set -euo pipefail
+          VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          case "$VERSION" in
+            *[!0-9.]*|*..*) echo "::error::version is not a plain X.Y.Z: $VERSION"; exit 1 ;;
+          esac
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          if [ -z "$MAJOR" ] || [ -z "$MINOR" ] || [ -z "$PATCH" ]; then
+            echo "::error::version is not a plain X.Y.Z: $VERSION"; exit 1
+          fi
+          # 10# forces base 10 so a padded component is never read as octal.
+          TAG=$(printf 'v%02d.%02d.%02d' "$((10#$MAJOR))" "$((10#$MINOR))" "$((10#$PATCH))")
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION -> tag $TAG"
 
       - name: Check version tag
         id: check
         env:
-          TAG: v${{ steps.read.outputs.version }}
+          TAG: ${{ steps.read.outputs.tag }}
         run: |
           if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
@@ -69,11 +96,129 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-  github-release:
-    name: Build binaries and create release
-    runs-on: ubuntu-latest
+  build:
+    name: Build ${{ matrix.asset }}
     needs: [test, version]
     if: needs.version.outputs.tag_exists == 'false'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          # Every target builds on its own architecture, so there is no cross
+          # toolchain to install. Linux uses musl so the binary is static and
+          # runs on distros older than the runner.
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+            asset: chex-linux-x64
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+            asset: chex-linux-arm64
+          - runner: macos-14
+            target: aarch64-apple-darwin
+            asset: chex-macos-arm64
+          # The macOS SDK carries both slices, so the arm64 runner builds x64 too.
+          - runner: macos-14
+            target: x86_64-apple-darwin
+            asset: chex-macos-x64
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            asset: chex-windows-x64.exe
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Rust
+        run: |
+          rustup show
+          rustup target add ${{ matrix.target }}
+
+      - name: Install musl tools
+        if: endsWith(matrix.target, '-musl')
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Build
+        run: cargo build --release --locked --bin chex --target ${{ matrix.target }}
+
+      - name: Stage asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist-bin
+          SOURCE="target/${{ matrix.target }}/release/chex"
+          if [ -f "$SOURCE.exe" ]; then SOURCE="$SOURCE.exe"; fi
+          cp "$SOURCE" "dist-bin/${{ matrix.asset }}"
+
+      # Smoke test on the platforms where the asset runs natively.
+      - name: Verify the binary runs
+        if: matrix.target != 'x86_64-apple-darwin'
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=$(./dist-bin/${{ matrix.asset }} validate examples/valid/person.schema.json \
+            "@examples/valid/person.data.json")
+          echo "$OUT"
+          echo "$OUT" | grep -q '"ok": true'
+
+      - name: Upload asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist-bin/${{ matrix.asset }}
+          retention-days: 1
+
+  wasm:
+    name: Build chex.wasm
+    needs: [test, version]
+    if: needs.version.outputs.tag_exists == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Rust
+        run: rustup show
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build
+        run: bun ./scripts/build-wasm.mjs
+
+      # The module must stay import-free, or it stops being drop-in for browsers.
+      - name: Verify the module has no host imports
+        run: |
+          bun -e '
+            const bytes = await Bun.file("dist-web/chex.wasm").arrayBuffer()
+            const module = await WebAssembly.compile(bytes)
+            const imports = WebAssembly.Module.imports(module)
+            if (imports.length > 0) throw new Error(`unexpected imports: ${JSON.stringify(imports)}`)
+            const instance = await WebAssembly.instantiate(module, {})
+            if (instance.exports.chex_abi_version() !== 1) throw new Error("unexpected ABI version")
+            console.log("chex.wasm: no imports, ABI 1")
+          '
+
+      - name: Upload assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: chex-wasm
+          path: |
+            dist-web/chex.wasm
+            dist-web/chex.mjs
+          retention-days: 1
+
+  github-release:
+    name: Create release
+    needs: [version, build, wasm, installer-windows]
+    if: needs.version.outputs.tag_exists == 'false'
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: write
@@ -84,54 +229,41 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Download assets
+        uses: actions/download-artifact@v4
         with:
-          bun-version: latest
+          path: staging
+          merge-multiple: true
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build cross-platform binaries
+      - name: Checksum
         run: |
           set -euo pipefail
-          mkdir -p dist-bin
-          build() {
-            echo "::group::$2"
-            bun build --compile --target="$1" ./src/cli/index.js --outfile "dist-bin/$2"
-            echo "::endgroup::"
-          }
-          build bun-linux-x64     chex-linux-x64
-          build bun-linux-arm64   chex-linux-arm64
-          build bun-darwin-x64    chex-macos-x64
-          build bun-darwin-arm64  chex-macos-arm64
-          build bun-windows-x64   chex-windows-x64.exe
-          cd dist-bin && sha256sum chex-* > SHA256SUMS
+          cd staging
+          ls -la
+          sha256sum chex-* chex.wasm chex.mjs > SHA256SUMS
+          cat SHA256SUMS
 
       - name: Create and push version tag
         env:
-          VERSION: ${{ needs.version.outputs.version }}
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "v$VERSION" -m "v$VERSION"
-          git push origin "v$VERSION"
+          git tag -a "$TAG" -m "$TAG"
+          git push origin "$TAG"
 
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.version.outputs.version }}
-        run: |
-          gh release create "v$VERSION" \
-            --title "v$VERSION" \
-            --generate-notes
+          TAG: ${{ needs.version.outputs.tag }}
+        run: gh release create "$TAG" --title "$TAG" --generate-notes
 
-      - name: Upload binaries and installers to release
+      - name: Upload binaries, Wasm, and installers to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.version.outputs.version }}
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
-          gh release upload "v$VERSION" \
-            dist-bin/chex-* dist-bin/SHA256SUMS \
+          gh release upload "$TAG" \
+            staging/chex-* staging/chex.wasm staging/chex.mjs staging/SHA256SUMS \
             scripts/install.sh scripts/install.ps1 \
             --clobber

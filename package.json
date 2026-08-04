@@ -1,16 +1,17 @@
 {
   "name": "chex",
-  "version": "26.28.02",
-  "description": "Language-agnostic regex-driven JSON schema validation for Bun and compiled executables",
-  "main": "./src/index.js",
-  "types": "./types/index.d.ts",
+  "description": "Task runner for the CHEX build. The crate version in Cargo.toml is the source of truth.",
+  "private": true,
   "type": "module",
   "scripts": {
-    "test": "bun test ./tests/",
-    "test:watch": "bun test --watch ./tests/",
-    "typecheck": "bun ./node_modules/typescript/bin/tsc --noEmit",
-    "build": "bun ./node_modules/typescript/bin/tsc",
-    "build:exe": "mkdir -p ./dist-bin && bun build --compile ./src/cli/index.js --outfile ./dist-bin/chex"
+    "build": "bun ./scripts/cargo.mjs build --release",
+    "build:wasm": "bun ./scripts/build-wasm.mjs",
+    "build:mobile": "bun ./scripts/build-mobile.mjs ios android",
+    "test": "bun ./scripts/cargo.mjs test",
+    "test:clients": "bun ./scripts/verify-clients.mjs",
+    "lint": "bun ./scripts/cargo.mjs clippy --all-targets",
+    "fmt": "bun ./scripts/cargo.mjs fmt",
+    "scan:schemas": "bun ./scripts/cargo.mjs build --release && bun ./scripts/scan-schema-compat.mjs"
   },
   "engines": {
     "bun": ">=1.2.0"
@@ -25,17 +26,13 @@
   },
   "license": "MIT",
   "keywords": [
-    "javascript",
-    "bun",
+    "rust",
+    "wasm",
     "validation",
     "schema",
     "regex",
     "cli",
     "executable"
   ],
-  "author": "Chidelma",
-  "devDependencies": {
-    "@types/bun": "^1.2.19",
-    "typescript": "^5.9.2"
-  }
+  "author": "Chidelma"
 }

@@ -1,15 +1,16 @@
-// Parity check for the in-process Kotlin validator (Chex.kt).
+// Smoke test for the JNI binding in Chex.kt.
 //
-// Runs a battery of schema/data cases through BOTH the pure-Kotlin validator and
-// the real `chex` binary (the oracle), and asserts they agree on accept/reject —
-// the same lockstep guarantee the web and Flutter clients have.
+// Chex.kt calls the same Rust core the binary does, so the validation rules can't
+// disagree — what this checks is the binding: request marshalling, the U+001F
+// error split, and library loading. It runs a battery of cases through both and
+// asserts they agree on accept/reject.
 //
 //   kotlinc clients/android/Chex.kt clients/android/ChexParity.kt -include-runtime -d /tmp/chex-android.jar
-//   java -jar /tmp/chex-android.jar ./dist-bin/chex
+//   java -Djava.library.path=target/release -jar /tmp/chex-android.jar ./target/release/chex
 //
-// Exits 0 when every case matches, 1 otherwise. Kotlin stdlib + JDK only. The
-// validator under test takes native Maps; this harness serializes them to JSON
-// (with a tiny encoder) only to feed the binary oracle.
+// Exits 0 when every case matches, 1 otherwise. Kotlin stdlib + JDK only.
+
+package dev.chex
 
 import java.io.File
 import java.nio.file.Files
