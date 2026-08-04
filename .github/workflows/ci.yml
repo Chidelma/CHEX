@@ -14,24 +14,87 @@ concurrency:
 
 jobs:
   test:
-    name: Test (Bun latest)
+    name: Core
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      # rust-toolchain.toml pins the channel and the wasm32 target.
+      - name: Setup Rust
+        run: rustup show
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - name: Format
+        run: cargo fmt --check
 
-      - name: Type check
-        run: bun run typecheck
+      - name: Lint
+        run: cargo clippy --all-targets --locked -- -D warnings
 
-      - name: Run tests
-        run: bun test ./tests/
+      # Includes tests/golden.rs, which replays the machine envelope the
+      # JavaScript build published before it was removed.
+      - name: Test
+        run: cargo test --locked
+
+      - name: Build Wasm
+        run: bun ./scripts/build-wasm.mjs
+
+      # The installer is how most users get the binary, so its checksum gate is
+      # release-critical and must keep failing closed.
+      - name: Test installer
+        run: sh tests/install.sh
+
+  installer-windows:
+    name: Installer (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # pwsh is preinstalled on windows runners. install.ps1 carries the same
+      # fail-closed checksum gate as install.sh and needs the same coverage.
+      - name: Test installer
+        shell: pwsh
+        run: pwsh -NoProfile -File tests/install.ps1
+
+  clients:
+    name: Language clients
+    # macOS so swiftc comes with Xcode; installing Swift on Linux costs ~1GB.
+    runs-on: macos-14
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Rust
+        run: rustup show
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Setup Kotlin
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/kotlin.zip \
+            https://github.com/JetBrains/kotlin/releases/download/v2.1.20/kotlin-compiler-2.1.20.zip
+          unzip -q /tmp/kotlin.zip -d /tmp
+          echo "/tmp/kotlinc/bin" >> "$GITHUB_PATH"
+
+      # Fails the job if any harness is skipped, so a missing toolchain can't
+      # quietly reduce coverage to nothing.
+      - name: Verify clients
+        run: bun ./scripts/verify-clients.mjs --require-all

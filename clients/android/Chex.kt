@@ -1,12 +1,18 @@
-// CHEX in-process validator for Android (and any pure Kotlin/JVM).
+// CHEX in-process validator for Android (and any Kotlin/JVM).
 //
 // An Android app can't spawn the `chex` binary — the app sandbox forbids
-// executing a bundled binary. So, like the browser JS and Flutter clients, this
-// validator runs the CHEX validation rules *in-process* against an in-memory
-// schema object. Kotlin stdlib only, no subprocess, no dependencies.
+// executing a bundled binary. So this calls the CHEX core through JNI. The rules
+// it runs are the binary's own, not a port of them, so there is nothing here
+// that can drift out of lockstep.
 //
 // (On the JVM server/desktop — Ktor, Spring, CLI — you can instead drive the
 // binary with the process-based client in `clients/kotlin/Chex.kt`.)
+//
+// Setup: build the native libraries and drop them into `src/main/jniLibs/`:
+//
+//   bun ./scripts/build-mobile.mjs android
+//
+// The JNI symbol is bound to this file's package, so `dev.chex` is not optional.
 //
 //   val schema = mapOf("name" to "^[A-Za-z]+ [A-Za-z]+$", "age" to "^[0-9]+$")
 //   val data = CHEXValidator.validate(schema, mapOf("name" to "Jane Doe", "age" to 30))
@@ -15,109 +21,69 @@
 // `schema` and `data` are plain Maps (decode your *.schema.json into one — bundle
 // it as an asset; an Android app won't read it from an arbitrary path). Every
 // leaf is a regex string; values are coerced to strings for matching, exactly as
-// the `chex` binary does. A faithful port of the binary's runtime validator,
-// kept in lockstep by ChexParity.kt.
+// the `chex` binary does.
 
-class CHEXException(message: String) : RuntimeException(message)
+package dev.chex
+
+/** A validation failure. [errorName] is the core's error class, e.g. `ValidationError`. */
+class CHEXException(val errorName: String, message: String) : RuntimeException(message)
+
+internal object Chex {
+    init {
+        System.loadLibrary("chex")
+    }
+
+    /** Returns null on success, or `name` + U+001F + `message` on failure. */
+    external fun nativeValidate(request: String): String?
+}
 
 object CHEXValidator {
-    private const val MAX_REGEX_LENGTH = 500
+    private const val SEPARATOR = '\u001F'
 
     /**
      * Validate [data] against an in-memory CHEX schema object.
      * Returns the original data on success; throws [CHEXException] on the first mismatch.
      */
-    fun validate(schema: Map<String, Any?>, data: Map<String, Any?>): Map<String, Any?> {
-        if (schema.isEmpty()) throw CHEXException("Schema must define at least one property")
-        walk(schema, data, "")
-        return data
+    @JvmOverloads
+    fun validate(
+        schema: Map<String, Any?>,
+        data: Map<String, Any?>,
+        label: String = "schema",
+    ): Map<String, Any?> {
+        val request = toJson(mapOf("schema" to schema, "data" to data, "label" to label))
+        val failure = Chex.nativeValidate(request) ?: return data
+        // The name never contains a separator, so splitting once is enough.
+        val split = failure.indexOf(SEPARATOR)
+        if (split < 0) throw CHEXException("CHEXError", failure)
+        throw CHEXException(failure.substring(0, split), failure.substring(split + 1))
     }
 
-    // Reject unknown data keys, then check each schema key.
-    private fun walk(schema: Map<String, Any?>, data: Map<String, Any?>, path: String) {
-        for (dataKey in data.keys) {
-            if (schema.containsKey(dataKey) || schema.containsKey("$dataKey?")) continue
-            throw CHEXException("Property '$dataKey' does not exist in schema")
+    // Just enough JSON to build the request. Android has org.json but the desktop
+    // JVM does not, and a shared client should not need a dependency for either.
+    private fun toJson(value: Any?): String = when (value) {
+        null -> "null"
+        is String -> encodeString(value)
+        is Boolean, is Number -> value.toString()
+        is Map<*, *> -> value.entries.joinToString(",", "{", "}") {
+            "${encodeString(it.key.toString())}:${toJson(it.value)}"
         }
-        for (schemaKey in schema.keys) validateProperty(schema, data, schemaKey, path)
+        is Iterable<*> -> value.joinToString(",", "[", "]") { toJson(it) }
+        else -> throw CHEXException("CHEXError", "Unsupported JSON value: $value")
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun validateProperty(schema: Map<String, Any?>, data: Map<String, Any?>, schemaKey: String, path: String) {
-        val schemaValue = schema[schemaKey]
-        val nullable = schemaKey.endsWith("?")
-        val dataKey = if (nullable) schemaKey.dropLast(1) else schemaKey
-        val value = data[dataKey]
-        val fullPath = if (path.isEmpty()) dataKey else "$path.$dataKey"
-        val defined = value != null
-
-        when (schemaValue) {
-            is String -> {
-                if (!defined) return if (nullable) Unit else rejectMissing(fullPath)
-                testLeaf(value, schemaValue, fullPath)
+    private fun encodeString(value: String): String {
+        val out = StringBuilder(value.length + 2).append('"')
+        for (char in value) {
+            when {
+                char == '"' -> out.append("\\\"")
+                char == '\\' -> out.append("\\\\")
+                char == '\n' -> out.append("\\n")
+                char == '\r' -> out.append("\\r")
+                char == '\t' -> out.append("\\t")
+                char < ' ' -> out.append("\\u%04x".format(char.code))
+                else -> out.append(char)
             }
-
-            is List<*> -> {
-                if (!defined) return if (nullable) Unit else rejectMissing(fullPath)
-                if (value !is List<*>) throw CHEXException("Type mismatch for '$fullPath': expected an array")
-                when (val item = schemaValue[0]) {
-                    is String -> for (element in value) testLeaf(element, item, fullPath)
-                    is Map<*, *> -> value.forEachIndexed { index, element ->
-                        if (element !is Map<*, *>) throw CHEXException("Type mismatch for '$fullPath[$index]': expected an object")
-                        walk(item as Map<String, Any?>, element as Map<String, Any?>, "$fullPath[$index]")
-                    }
-                }
-            }
-
-            is Map<*, *> -> {
-                if (!defined) return if (nullable) Unit else rejectMissing(fullPath)
-                if (value !is Map<*, *>) throw CHEXException("Type mismatch for '$fullPath': expected an object")
-                val schemaObject = schemaValue as Map<String, Any?>
-                if (isRecordType(schemaObject)) {
-                    val keyPattern = schemaObject.keys.first()
-                    val valuePattern = schemaObject[keyPattern]
-                    for ((k, v) in value) {
-                        testLeaf(k, keyPattern, "$fullPath.<key:$k>")
-                        testLeaf(v, valuePattern, "$fullPath.$k")
-                    }
-                } else {
-                    walk(schemaObject, value as Map<String, Any?>, fullPath)
-                }
-            }
-
-            else -> throw CHEXException("Schema value for '$fullPath' must be a regex string")
         }
-    }
-
-    private fun rejectMissing(path: String): Nothing =
-        throw CHEXException("Property '$path' cannot be null or undefined")
-
-    private fun isRecordType(schema: Map<String, Any?>): Boolean {
-        val keys = schema.keys.toList()
-        return keys.size == 1 && keys[0].startsWith("^")
-    }
-
-    private fun testLeaf(value: Any?, pattern: Any?, path: String) {
-        if (pattern !is String || pattern.isEmpty()) {
-            throw CHEXException("Schema value for '$path' must be a non-empty regex string")
-        }
-        if (pattern.length > MAX_REGEX_LENGTH) {
-            throw CHEXException("Regex pattern for '$path' exceeds maximum allowed length")
-        }
-        val regex = try {
-            Regex(pattern)
-        } catch (e: Exception) {
-            throw CHEXException("Invalid RegEx pattern for '$path'")
-        }
-        if (!regex.containsMatchIn(stringify(value))) {
-            throw CHEXException("RegEx pattern fails for property '$path'")
-        }
-    }
-
-    // Coerce a value to a string the way the binary's String(value) does.
-    private fun stringify(value: Any?): String = when (value) {
-        is Boolean -> value.toString()
-        is Double -> if (value == Math.floor(value) && value.isFinite()) value.toLong().toString() else value.toString()
-        else -> value.toString()
+        return out.append('"').toString()
     }
 }

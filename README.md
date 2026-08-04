@@ -139,17 +139,42 @@ The installer downloads the right binary for your OS/arch from the latest
 release, verifies its checksum, and puts `chex` on your PATH. Then verify:
 `chex --help`.
 
+Checksum verification **fails closed**: if the checksum does not match, or
+`SHA256SUMS` cannot be fetched, or no hashing tool is available, the install
+aborts and nothing is written to your PATH.
+
+Two environment variables control the installers:
+
+| Variable | Effect |
+| --- | --- |
+| `CHEX_VERSION` | Install a specific release instead of the latest. Accepts `26.28.02` or `v26.28.02`. This is the rollback path. |
+| `CHEX_SKIP_CHECKSUM` | Set to `1` to install without verifying the checksum. Only for systems with no `sha256sum`/`shasum`. |
+
+```sh
+# Pin a version — e.g. to roll back
+CHEX_VERSION=26.28.02 curl -fsSL https://github.com/d31ma/CHEX/releases/latest/download/install.sh | sh
+```
+
+```powershell
+# Windows
+$env:CHEX_VERSION = '26.28.02'; irm https://github.com/d31ma/CHEX/releases/latest/download/install.ps1 | iex
+```
+
 Prefer to do it by hand? Download the asset for your platform from the
 [latest release](https://github.com/d31ma/CHEX/releases/latest) —
 `chex-linux-x64`, `chex-linux-arm64`, `chex-macos-x64`, `chex-macos-arm64`, or
 `chex-windows-x64.exe` — `chmod +x` it, and move it onto your PATH. Checksums are
 in `SHA256SUMS`.
 
-Or build it from source with [Bun](https://bun.sh):
+Or build it from source with [Rust](https://rustup.rs) 1.97+:
 
 ```sh
-bun run build:exe   # → ./dist-bin/chex
+bun run build         # → ./target/release/chex
+bun run build:wasm    # → ./dist-web/chex.wasm  (browsers, Node, Deno, Workers)
+bun run build:mobile  # → ./dist-mobile/        (iOS xcframework, Android jniLibs)
 ```
+
+Bun only drives the scripts in `scripts/`; nothing at runtime depends on it.
 
 ### Use it from your language
 
@@ -247,12 +272,16 @@ or ends in `.schema.json`) or a **name** resolved against `schemaDir`.
 | iOS (Swift) | [`clients/ios/Chex.swift`](clients/ios/Chex.swift) | `camelCase` |
 | Android (Kotlin) | [`clients/android/Chex.kt`](clients/android/Chex.kt) | `camelCase` |
 
-> **Four clients are in-process.** A browser, a Flutter mobile/web app, an iOS
-> app, and an Android app can't spawn the `chex` binary (sandbox / no filesystem),
-> so they run the validation rules in-process against an in-memory schema object —
-> no binary, no network. Each is a faithful port of the engine, kept in lockstep
-> by a parity check. The binary-driving Swift and Kotlin clients above still serve
-> server-side Swift and JVM Kotlin, where the binary can be spawned.
+> **Four clients are in-process.** A browser, a Flutter app, an iOS app, and an
+> Android app can't spawn the `chex` binary (sandbox / no filesystem), so they
+> link the engine instead of driving it — the browser through `chex.wasm`, the
+> rest through the C ABI or JNI. They run the same compiled validator the binary
+> does, so their results cannot drift from it. The one exception is Flutter
+> **web**, which has no `dart:ffi` and keeps a pure-Dart port checked against the
+> binary by `clients/flutter/chex_parity.dart`.
+>
+> The binary-driving Swift and Kotlin clients above still serve server-side Swift
+> and JVM Kotlin, where the binary can be spawned.
 
 <details open>
 <summary><strong>Python</strong></summary>
@@ -418,22 +447,28 @@ try {
 <details>
 <summary><strong>Web (browser)</strong></summary>
 
-Runs in-process against a schema **object** — no binary, no `schemaDir`.
+Runs the engine in-process as WebAssembly, against a schema **object** — no
+binary, no `schemaDir`. Serve `chex.wasm` alongside `chex.mjs`.
 
 ```js
-import { validate } from './chex.mjs'
+import { ready, validate } from './chex.mjs'
 
+await ready()   // compiles chex.wasm once
 const schema = { name: '^[A-Za-z]+ [A-Za-z]+$', age: '^[0-9]+$' }
 const data = validate(schema, { name: 'Jane Doe', age: 30 })  // returns the data
-// throws CHEXError on a schema mismatch
+// throws CHEXError on a schema mismatch; err.name is the engine's error class
 ```
+
+The module needs no host imports, so the same file works in Node, Deno, Bun, and
+Cloudflare Workers.
 
 </details>
 
 <details>
 <summary><strong>Flutter (Dart, in-process)</strong></summary>
 
-Runs on every Flutter target (mobile, web, desktop) — no `dart:io`, no binary.
+Runs on every Flutter target. Mobile and desktop call the engine over `dart:ffi`;
+web falls back to a pure-Dart port. Ship the library from `bun run build:mobile`.
 
 ```dart
 import 'chex.dart';
@@ -448,7 +483,8 @@ final data = validate(schema, {'name': 'Jane Doe', 'age': 30}); // returns the d
 <details>
 <summary><strong>iOS (Swift, in-process)</strong></summary>
 
-Foundation only, no subprocess — for iOS apps (the macOS/Linux binary client is `clients/swift/Chex.swift`).
+Links `Chex.xcframework` and calls the engine's C ABI — no subprocess (the
+macOS/Linux binary client is `clients/swift/Chex.swift`).
 
 ```swift
 import Foundation
@@ -463,7 +499,9 @@ let data = try CHEXValidator.validate(schema, ["name": "Jane Doe", "age": 30])
 <details>
 <summary><strong>Android (Kotlin, in-process)</strong></summary>
 
-Kotlin stdlib only, native `Map`s — for Android apps (the JVM binary client is `clients/kotlin/Chex.kt`).
+Calls the engine over JNI with native `Map`s. Put `jniLibs/` in your source set;
+the class must stay in package `dev.chex` (the JNI symbol is bound to it). The
+JVM binary client is `clients/kotlin/Chex.kt`.
 
 ```kotlin
 val schema = mapOf("name" to "^[A-Za-z]+ [A-Za-z]+$", "age" to "^[0-9]+$")
@@ -492,6 +530,12 @@ Validate a JSON data object against a schema.
   object string.
 - `schemaDir` (optional) — directory to resolve a schema **name** against.
 
+> **`schemaDir` is a lookup base, not a sandbox.** It applies only to plain
+> names, which are restricted to `[A-Za-z0-9._-]` with `..` rejected. A `schema`
+> argument that *looks like a path* bypasses it and is read directly, so if you
+> pass untrusted input as `schema`, validate it yourself first — or CHEX will
+> read any `*.schema.json` file the process can reach.
+
 **Returns:** the validated data (the original object, unchanged). Dynamic
 languages return the parsed value; Rust and Java return the raw JSON response
 line.
@@ -504,7 +548,7 @@ cannot be loaded. The error carries CHEX's message
 
 Send one machine-protocol object and get the full response envelope back
 (`{ ok, result | error, … }`). Use it for any operation not wrapped by a method.
-See [`src/cli/machine.js`](src/cli/machine.js) and `chex --help`.
+See [`src/main.rs`](src/main.rs) and `chex --help`.
 
 ---
 
@@ -633,6 +677,16 @@ You can also constrain numeric-looking keys:
 - Regex patterns in schema values are limited to 500 characters.
 - Validation returns the original data object when successful.
 
+**Regex dialect.** Patterns are matched by a linear-time engine, so matching
+cannot blow up on adversarial input. The cost is that lookahead `(?=...)`,
+lookbehind `(?<=...)`, and backreferences `\1` are not supported and are
+rejected at load time with `Invalid RegEx pattern for '<path>'`. Point
+`bun run scan:schemas` at your schema directory to find affected files.
+
+Two smaller differences from the pre-1.0 JavaScript build: `\d`, `\w`, and `\s`
+are Unicode-aware rather than ASCII-only, and numbers outside roughly 1e-6 to
+1e21 stringify in a different exponent form before matching.
+
 ---
 
 ## Security
@@ -641,9 +695,12 @@ CHEX validates data shape and regex constraints. It does not provide
 authentication, authorization, or schema access control.
 
 If callers provide schema paths, authorize and constrain those paths at your
-application boundary before passing them to CHEX. Treat schema files as trusted
-configuration: regexes are compiled and executed during validation, and overly
-broad schema access can expose files you did not intend to validate against.
+application boundary before passing them to CHEX. Overly broad schema access can
+expose files you did not intend to validate against.
+
+Schema regexes are not a denial-of-service surface: the engine has no
+backtracking, so match time is linear in the length of the subject string
+regardless of the pattern.
 
 The client shims spawn the `chex` binary directly with array arguments (no
 shell), so there is no command-injection surface — but the binary path itself is
@@ -656,5 +713,5 @@ caller-controlled, so point it at a trusted `chex`.
 Released under the [MIT License](https://opensource.org/licenses/MIT).
 
 <div align="center">
-<sub>Built with <a href="https://bun.sh">Bun</a> · Distributed as a single binary via <a href="https://github.com/d31ma/CHEX/releases">GitHub Releases</a></sub>
+<sub>Built with <a href="https://www.rust-lang.org">Rust</a> · Distributed as a single binary via <a href="https://github.com/d31ma/CHEX/releases">GitHub Releases</a></sub>
 </div>

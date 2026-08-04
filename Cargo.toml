@@ -1,0 +1,42 @@
+[package]
+name = "chex"
+version = "26.32.2"
+edition = "2024"
+rust-version = "1.85"
+description = "Regex-driven JSON schema validation"
+license = "MIT"
+repository = "https://github.com/d31ma/CHEX"
+publish = false
+
+[lib]
+name = "chex"
+# rlib for the bin, cdylib for wasm + Android/iOS dynamic linking, staticlib for
+# iOS/Flutter FFI. One core, three consumers.
+crate-type = ["rlib", "cdylib", "staticlib"]
+
+[[bin]]
+name = "chex"
+path = "src/main.rs"
+
+[dev-dependencies]
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[features]
+# Android and the desktop JVM only. Keeps the `jni` crate out of wasm and the CLI.
+jni-bindings = ["dep:jni"]
+
+[dependencies]
+jni = { version = "0.21", optional = true }
+# Same feature set on every target so all artifacts share one regex dialect.
+# `perf` is off: it costs ~275K of wasm for literal prefilters that barely help
+# on the short strings a validator sees. `unicode-perl` stays because dropping
+# it makes `\d` and `\w` a hard compile error rather than falling back to ASCII.
+regex = { version = "1", default-features = false, features = ["std", "unicode-perl", "unicode-case"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "z"
+panic = "abort"
+strip = true

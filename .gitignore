@@ -4,6 +4,9 @@ node_modules
 # Build artifacts
 types/
 dist-bin/
+dist-web/
+dist-mobile/
+target/
 __pycache__/
 
 # Graphify

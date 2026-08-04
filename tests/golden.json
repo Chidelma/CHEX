@@ -1,0 +1,775 @@
+[
+  {
+    "argv": [
+      "validate",
+      "examples/valid/person.schema.json",
+      "@examples/valid/person.data.json"
+    ],
+    "exitCode": 0,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": true,
+      "op": "validate",
+      "requestId": null,
+      "result": {
+        "name": "Jane Doe",
+        "age": 30,
+        "active": true,
+        "nickname": null,
+        "address": {
+          "city": "Toronto",
+          "country": "Canada"
+        },
+        "tags": [
+          "typescript",
+          "bun"
+        ],
+        "scores": [
+          95,
+          87
+        ],
+        "meta": {
+          "employer": "ACME",
+          "dept": "engineering"
+        }
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/valid/order.schema.json",
+      "@examples/valid/order.data.json"
+    ],
+    "exitCode": 0,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": true,
+      "op": "validate",
+      "requestId": null,
+      "result": {
+        "orderId": "ORD-1001",
+        "items": [
+          {
+            "sku": "BOOK-1",
+            "quantity": 2,
+            "giftWrap": false
+          },
+          {
+            "sku": "PEN-9",
+            "quantity": 12,
+            "giftWrap": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/valid/status.schema.json",
+      "@examples/valid/status.data.json"
+    ],
+    "exitCode": 0,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": true,
+      "op": "validate",
+      "requestId": null,
+      "result": {
+        "direction": "north",
+        "priority": 2,
+        "label": "active",
+        "tag": null
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/valid/measure.schema.json",
+      "@examples/valid/measure.data.json"
+    ],
+    "exitCode": 0,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": true,
+      "op": "validate",
+      "requestId": null,
+      "result": {
+        "score": 100,
+        "temperature": 25,
+        "quantity": 10,
+        "username": "alice",
+        "code": "AB12"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/valid/person.schema.json",
+      "{}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "ValidationError",
+        "message": "Property 'name' cannot be null or undefined in schema 'examples/valid/person.schema.json'"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/valid/person.schema.json",
+      "{\"name\":\"Jane Doe\",\"age\":\"not-a-number\"}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "ValidationError",
+        "message": "RegEx pattern fails for property 'age' in schema 'examples/valid/person.schema.json'"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/valid/person.schema.json",
+      "{\"name\":\"Jane Doe\",\"age\":30,\"unknown\":1}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "ValidationError",
+        "message": "Property 'unknown' does not exist in schema 'examples/valid/person.schema.json'"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/valid/person.schema.json",
+      "{\"name\":null,\"age\":30}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "ValidationError",
+        "message": "Property 'name' cannot be null or undefined in schema 'examples/valid/person.schema.json'"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/valid/order.schema.json",
+      "{\"id\":\"A1\",\"items\":\"not-an-array\"}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "ValidationError",
+        "message": "Property 'id' does not exist in schema 'examples/valid/order.schema.json'"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/valid/order.schema.json",
+      "{\"id\":\"A1\",\"items\":[\"not-an-object\"]}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "ValidationError",
+        "message": "Property 'id' does not exist in schema 'examples/valid/order.schema.json'"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/valid/status.schema.json",
+      "{\"flags\":{\"BAD KEY\":\"x\"}}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "ValidationError",
+        "message": "Property 'flags' does not exist in schema 'examples/valid/status.schema.json'"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/valid/person.schema.json",
+      "{\"name\":\"Jane Doe\",\"age\":30.0}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "ValidationError",
+        "message": "Property 'active' cannot be null or undefined in schema 'examples/valid/person.schema.json'"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/valid/person.schema.json",
+      "{\"name\":\"Jane Doe\",\"age\":true}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "ValidationError",
+        "message": "RegEx pattern fails for property 'age' in schema 'examples/valid/person.schema.json'"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/valid/person.schema.json",
+      "{\"name\":\"Jane Doe\",\"age\":[1,null,2]}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "ValidationError",
+        "message": "RegEx pattern fails for property 'age' in schema 'examples/valid/person.schema.json'"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/valid/person.schema.json",
+      "{\"name\":\"Jane Doe\",\"age\":{}}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "ValidationError",
+        "message": "RegEx pattern fails for property 'age' in schema 'examples/valid/person.schema.json'"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/invalid/empty-object.schema.json",
+      "{}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "InvalidInputError",
+        "message": "Schema 'examples/invalid/empty-object.schema.json' must define at least one property"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/invalid/empty-pattern.schema.json",
+      "{}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "InvalidInputError",
+        "message": "Schema pattern for 'name' in schema 'examples/invalid/empty-pattern.schema.json' cannot be empty"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/invalid/invalid-regex-pattern.schema.json",
+      "{}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "ValidationError",
+        "message": "Invalid RegEx pattern for 'name' in schema 'examples/invalid/invalid-regex-pattern.schema.json'"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/invalid/non-string-leaf.schema.json",
+      "{}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "InvalidInputError",
+        "message": "Schema value for 'name' in schema 'examples/invalid/non-string-leaf.schema.json' must be a regex string"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/invalid/multiple-array-templates.schema.json",
+      "{}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "InvalidInputError",
+        "message": "Array schema for 'items' in schema 'examples/invalid/multiple-array-templates.schema.json' must contain exactly one regex string or object schema"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/invalid/empty-array-pattern.schema.json",
+      "{}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "InvalidInputError",
+        "message": "Array schema for 'tags' in schema 'examples/invalid/empty-array-pattern.schema.json' must contain exactly one regex string or object schema"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/invalid/array-object-empty.schema.json",
+      "{}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "InvalidInputError",
+        "message": "Schema 'examples/invalid/array-object-empty.schema.json' at 'items[]' must define at least one property"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/invalid/json-lines.schema.json",
+      "{}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "SchemaLoadError",
+        "message": "Schema files must contain one JSON object, not JSONL: 'examples/invalid/json-lines.schema.json'"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/invalid/wrong-extension.json",
+      "{}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "ConfigError",
+        "message": "Schema path must point to a .schema.json file"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/invalid/non-json.txt",
+      "{}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "ConfigError",
+        "message": "Schema path must point to a .schema.json file"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/valid/does-not-exist.schema.json",
+      "{}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "SchemaLoadError",
+        "message": "Failed to load schema from 'examples/valid/does-not-exist.schema.json'"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "person",
+      "@examples/valid/person.data.json",
+      "--schema-dir",
+      "examples/valid"
+    ],
+    "exitCode": 0,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": true,
+      "op": "validate",
+      "requestId": null,
+      "result": {
+        "name": "Jane Doe",
+        "age": 30,
+        "active": true,
+        "nickname": null,
+        "address": {
+          "city": "Toronto",
+          "country": "Canada"
+        },
+        "tags": [
+          "typescript",
+          "bun"
+        ],
+        "scores": [
+          95,
+          87
+        ],
+        "meta": {
+          "employer": "ACME",
+          "dept": "engineering"
+        }
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "../etc/passwd",
+      "{}",
+      "--schema-dir",
+      "examples/valid"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "ConfigError",
+        "message": "Schema path must point to a .schema.json file"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "missing-name",
+      "{}",
+      "--schema-dir",
+      "examples/valid"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "SchemaLoadError",
+        "message": "Failed to load schema from '/Users/iyor/Library/CloudStorage/Dropbox/myOrganizations/DELMA/CHEX/examples/valid/missing-name.schema.json'"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": null,
+      "requestId": null,
+      "error": {
+        "name": "Error",
+        "message": "Missing schema for validate"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/valid/person.schema.json"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": null,
+      "requestId": null,
+      "error": {
+        "name": "Error",
+        "message": "Missing JSON data input for validate"
+      }
+    }
+  },
+  {
+    "argv": [
+      "validate",
+      "examples/valid/person.schema.json",
+      "not-json"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": null,
+      "requestId": null,
+      "error": {
+        "name": "Error",
+        "message": "Invalid JSON input: JSON Parse error: Unexpected identifier \"not\""
+      }
+    }
+  },
+  {
+    "argv": [
+      "nonsense"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": null,
+      "requestId": null,
+      "error": {
+        "name": "Error",
+        "message": "Unsupported command \"nonsense\""
+      }
+    }
+  },
+  {
+    "argv": [
+      "exec"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": null,
+      "requestId": null,
+      "error": {
+        "name": "Error",
+        "message": "Missing --request for exec"
+      }
+    }
+  },
+  {
+    "argv": [
+      "exec",
+      "--request",
+      "@examples/valid/validate-request.json"
+    ],
+    "exitCode": 0,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": true,
+      "op": "validate",
+      "requestId": "smoke-validate",
+      "result": {
+        "direction": "north",
+        "priority": 2,
+        "label": "active",
+        "tag": null
+      }
+    }
+  },
+  {
+    "argv": [
+      "exec",
+      "--request",
+      "{\"op\":\"nope\"}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": null,
+      "requestId": null,
+      "error": {
+        "name": "Error",
+        "message": "Unsupported machine operation \"nope\""
+      }
+    }
+  },
+  {
+    "argv": [
+      "exec",
+      "--request",
+      "{\"op\":\"validate\",\"data\":{}}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "Error",
+        "message": "Machine request field \"collection\" must be a non-empty string"
+      }
+    }
+  },
+  {
+    "argv": [
+      "exec",
+      "--request",
+      "{\"op\":\"validate\",\"schemaPath\":\"examples/valid/person.schema.json\"}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": null,
+      "error": {
+        "name": "Error",
+        "message": "Machine request field \"data\" must be an object"
+      }
+    }
+  },
+  {
+    "argv": [
+      "exec",
+      "--request",
+      "{\"op\":\"validate\",\"requestId\":\"r-1\",\"schemaPath\":\"examples/valid/person.schema.json\",\"data\":{\"name\":\"Jane Doe\",\"age\":30}}"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": "validate",
+      "requestId": "r-1",
+      "error": {
+        "name": "ValidationError",
+        "message": "Property 'active' cannot be null or undefined in schema 'examples/valid/person.schema.json'"
+      }
+    }
+  },
+  {
+    "argv": [
+      "exec",
+      "--request",
+      "not-json"
+    ],
+    "exitCode": 1,
+    "envelope": {
+      "protocolVersion": 1,
+      "ok": false,
+      "op": null,
+      "requestId": null,
+      "error": {
+        "name": "Error",
+        "message": "Invalid JSON input: JSON Parse error: Unexpected identifier \"not\""
+      }
+    }
+  }
+]

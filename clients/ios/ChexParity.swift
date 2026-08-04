@@ -1,11 +1,14 @@
-// Parity check for the in-process Swift validator (Chex.swift).
+// Smoke test for the C ABI binding in Chex.swift.
 //
-// Runs a battery of schema/data cases through BOTH the pure-Swift validator and
-// the real `chex` binary (the oracle), and asserts they agree on accept/reject —
-// the same lockstep guarantee the web and Flutter clients have.
+// Chex.swift calls the same engine the binary does, so the validation rules
+// can't disagree — what this checks is the binding: request marshalling, the
+// result buffer, and error decoding. It runs a battery of cases through both and
+// asserts they agree on accept/reject.
 //
-//   swiftc clients/ios/Chex.swift clients/ios/ChexParity.swift -o /tmp/chex-ios
-//   /tmp/chex-ios ./dist-bin/chex
+//   swiftc -import-objc-header include/chex.h \
+//     clients/ios/Chex.swift clients/ios/ChexParity.swift \
+//     -L target/release -lchex -o /tmp/chex-ios
+//   /tmp/chex-ios ./target/release/chex
 //
 // Exits 0 when every case matches, 1 otherwise. Foundation only.
 

@@ -27,7 +27,9 @@ drop in one file for your language and validate JSON against `*.schema.json` fil
 > sandboxed, or no filesystem at all). So `web/chex.mjs`, `flutter/chex.dart`,
 > `ios/Chex.swift`, and `android/Chex.kt` run the CHEX validation rules
 > **in-process** against an in-memory schema object — no binary required. Each is
-> a faithful port of the binary's validator, kept in lockstep by a parity check.
+> the binary's own validator, linked rather than reimplemented — the browser via
+> `chex.wasm`, the rest via the C ABI or JNI. Flutter **web** is the exception:
+> no `dart:ffi` there, so it keeps a pure-Dart port under a parity check.
 > See [In-process clients](#in-process-clients) below.
 >
 > The binary-driving `swift/Chex.swift` and `kotlin/Chex.kt` stay useful for
@@ -63,6 +65,9 @@ paradigm** — `snake_case`/`camelCase`/`PascalCase` as appropriate:
     ends in `.schema.json`) or a **name** resolved against `schemaDir`.
   - Returns the validated data on success; **raises/throws** when the data does
     not match the schema (the thrown error carries CHEX's message).
+  - `schemaDir` is a lookup base, not a sandbox: it constrains **names** only, so
+    a path-shaped `schema` bypasses it. Validate untrusted input before passing
+    it as `schema`.
 
 Dynamic-JSON languages (Python, Ruby, Node, PHP, Go, C#, Swift, Dart) take `data`
 as a native map/object. Languages without a bundled JSON builder (Rust, Java,
@@ -71,7 +76,7 @@ response line — build the object with serde_json / Jackson / Gson /
 kotlinx.serialization.
 
 For anything else, use the raw `request(op)` escape hatch — see `chex --help`
-and `src/cli/machine.js` for the machine protocol.
+and `src/main.rs` for the machine protocol.
 
 ## How it works
 
@@ -117,18 +122,22 @@ unknown-property rejection — match the binary exactly.
 A browser has no subprocess, filesystem, or network to reach the binary.
 
 ```js
-import { validate } from './chex.mjs'
+import { ready, validate } from './chex.mjs'
 
+await ready()   // compiles chex.wasm once
 const schema = { name: '^[A-Za-z]+ [A-Za-z]+$', age: '^[0-9]+$' }
 const data = validate(schema, { name: 'Jane Doe', age: 30 })  // returns the data
 // throws CHEXError on a schema mismatch
 ```
 
-Kept in lockstep by `tests/unit/web-client.test.js` — every case runs through
-both the shim and the real engine. It works in Node/Bun too, which is how the
-parity test exercises it.
+Runs the engine itself, compiled to WebAssembly, so there is no second
+implementation to keep in step. Serve `chex.wasm` beside `chex.mjs`. The module
+needs no host imports, so the same pair works in Node, Bun, Deno, and Workers.
 
 ### `flutter/chex.dart` — Flutter (and any pure Dart)
+
+Mobile and desktop call the engine over `dart:ffi`; Flutter web falls back to a
+pure-Dart port in `chex_web.dart`, selected by conditional import.
 
 Flutter mobile and web can't spawn the binary either — iOS/Android sandboxes
 forbid exec of a bundled executable, and Flutter web has no `dart:io`. This
